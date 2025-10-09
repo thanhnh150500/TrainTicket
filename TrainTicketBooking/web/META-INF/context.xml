@@ -1,2 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Context path="/TrainTicketBooking"/>
+<Context path="/TrainTicketBooking">
+    <Resource   name ="jdbc/TrainDB"
+                auth = "Container"
+                type = "javax.sql.DataSource" 
+                factory = "org.apache.tomcat.jdbc.pool.DataSourceFactory"
+                driverClassName = "com.microsoft.sqlserver.jdbc.SQLServerDriver"
+                url = "jdbc:sqlserver://localhost:1433;databaseName=TrainDB;encrypt=true;trustServerCertificate=true;"
+                username = "bean2k"
+                password = "admin" 
+                maxTotal = "20" 
+                maxIdle = "5" 
+                maxWaitMillis = "10000"/>
+</Context>
