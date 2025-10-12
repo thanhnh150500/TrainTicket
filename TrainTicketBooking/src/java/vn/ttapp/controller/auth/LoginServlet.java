@@ -1,3 +1,5 @@
+package vn.ttapp.controller.auth;
+
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/Servlet.java to edit this template
@@ -11,23 +13,17 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import vn.ttapp.model.User;
+import vn.ttapp.service.AuthService;
 
 /**
  *
  * @author New User
  */
-@WebServlet(urlPatterns = {"/login"})
+@WebServlet(name="LoginServlet", urlPatterns = {"/login"})
 public class LoginServlet extends HttpServlet {
-
-    /**
-     * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
-     * methods.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
-     */
+    private final AuthService auth = new AuthService();
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         response.setContentType("text/html;charset=UTF-8");
@@ -45,40 +41,30 @@ public class LoginServlet extends HttpServlet {
         }
     }
 
-    // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
-    /**
-     * Handles the HTTP <code>GET</code> method.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
-     */
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+    protected void doGet(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
-        processRequest(request, response);
+        req.getRequestDispatcher("/WEB-INF/views/auth/login.jsp").forward(req, res);
     }
-
-    /**
-     * Handles the HTTP <code>POST</code> method.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
-     */
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+    protected void doPost(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
-        processRequest(request, response);
+        String email = req.getParameter("email");
+        String pass = req.getParameter("password");
+        try {
+            User u = auth.login(email, pass);
+            if (u == null) {
+                req.setAttribute("error", "Email or password is incorrect");
+                doGet(req, res);
+                return;
+            }
+            HttpSession ss = req.getSession(true);
+            ss.setAttribute("authUser", u);
+            res.sendRedirect(req.getContextPath() + "/");
+        } catch (Exception e) {
+            throw new ServletException(e);
+        }
     }
-
-    /**
-     * Returns a short description of the servlet.
-     *
-     * @return a String containing servlet description
-     */
     @Override
     public String getServletInfo() {
         return "Short description";
