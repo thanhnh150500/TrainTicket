@@ -1,0 +1,82 @@
+/*
+Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/CascadeStyleSheet.css to edit this template
+*/
+/* 
+    Created on : Oct 12, 2025, 10:31:10 PM
+    Author     : New User
+*/
+
+body {
+    background-color: #f8f9fb;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+}
+
+.login-card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    padding: 2.5rem 2.8rem;
+    width: 100%;
+    max-width: 400px;
+}
+
+.login-card h2 {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.login-card p {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-control {
+    border-radius: 8px;
+    padding: 0.6rem 0.8rem;
+}
+
+.form-check-label {
+    font-size: 0.9rem;
+}
+
+.btn-primary {
+    background-color: #5d5fef;
+    border: none;
+    border-radius: 8px;
+    padding: 0.6rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+    background-color: #4a4dd8;
+}
+
+a {
+    color: #5d5fef;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.input-group .btn-outline-secondary {
+    border-color: #ced4da;
+    color: #6c757d;
+    background: #fff;
+}
+
+.input-group .btn-outline-secondary:hover {
+    background: #f1f1f1;
+}
+
+
