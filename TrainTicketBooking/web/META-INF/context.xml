@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Context path="/TrainTicketBooking">
-  <Resource auth="Container" driverClassName="com.microsoft.sqlserver.jdbc.SQLServerDriver" factory="org.apache.tomcat.jdbc.pool.DataSourceFactory" maxIdle="10" maxTotal="50" maxWaitMillis="10000" name="jdbc/TrainDB" password="admin" type="javax.sql.DataSource" url="jdbc:sqlserver://localhost:1433;databaseName=TrainDB;encrypt=true;trustServerCertificate=true;" username="bean2k"/>
+    <Resource auth="Container" driverClassName="com.microsoft.sqlserver.jdbc.SQLServerDriver" factory="org.apache.tomcat.jdbc.pool.DataSourceFactory" maxIdle="10" maxTotal="50" maxWaitMillis="10000" name="jdbc/TrainDB" password="sa" type="javax.sql.DataSource" url="jdbc:sqlserver://localhost:1433;databaseName=TrainDB;encrypt=true;trustServerCertificate=true;" username="sa"/>
 </Context>
