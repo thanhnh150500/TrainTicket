@@ -5,8 +5,6 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 import vn.ttapp.dao.RouteDao;
 import vn.ttapp.dao.TrainDao;
-import vn.ttapp.dao.TrainDao.TrainMeta;
-import vn.ttapp.dao.TrainDao.CarriageMeta;
 import vn.ttapp.model.Route;
 import vn.ttapp.model.Trip;
 import vn.ttapp.model.Train;
@@ -60,102 +58,102 @@ public class TripManagerServlet extends HttpServlet {
                     req.setAttribute("t", t);
                     req.getRequestDispatcher("/WEB-INF/views/manager/trip_form.jsp").forward(req, res);
                 }
-                case "metaRoute" -> {
-                    res.setCharacterEncoding("UTF-8");
-                    res.setContentType("application/json; charset=UTF-8");
-
-                    Integer rid = null;
-                    try {
-                        String ridRaw = req.getParameter("route_id");
-                        if (ridRaw != null && !ridRaw.isBlank()) {
-                            rid = Integer.parseInt(ridRaw);
-                        }
-                    } catch (NumberFormatException ignore) {
-                        rid = null;
-                    }
-
-                    try (PrintWriter out = res.getWriter()) {
-                        vn.ttapp.model.Route r = (rid != null) ? routeDao.findByIdWithStations(rid) : null;
-                        if (r == null) {
-                            out.print("{}");
-                            return;
-                        }
-                        out.print("{");
-                        out.printf("\"routeId\":%d,", r.getRouteId());
-                        out.printf("\"code\":\"%s\",", esc(r.getCode()));
-                        out.printf("\"originName\":\"%s\",", esc(r.getOriginName()));
-                        out.printf("\"destName\":\"%s\"", esc(r.getDestName()));
-                        out.print("}");
-                    } catch (SQLException e) {
-                        try (PrintWriter out = res.getWriter()) {
-                            out.print("{}");
-                        }
-                    }
-                }
-                case "metaTrain" -> {
-                    res.setCharacterEncoding("UTF-8");
-                    res.setContentType("application/json; charset=UTF-8");
-                    Integer tid = null;
-                    try {
-                        String tidRaw = req.getParameter("train_id");
-                        if (tidRaw != null && !tidRaw.isBlank()) {
-                            tid = Integer.parseInt(tidRaw);
-                        }
-                    } catch (NumberFormatException ignore) {
-                        tid = null;
-                    }
-
-                    try (PrintWriter out = res.getWriter()) {
-                        TrainDao.TrainMeta tm = (tid != null) ? trainDao.findDetail(tid) : null;
-                        if (tm == null) {
-                            out.print("{}");
-                            return;
-                        }
-
-                        out.print("{");
-                        out.printf("\"trainId\":%d,", tm.trainId);
-                        out.printf("\"code\":\"%s\",", esc(tm.code));
-                        out.printf("\"name\":\"%s\",", esc(tm.name));
-                        out.printf("\"totalCarriages\":%d,", tm.totalCarriages);
-                        out.printf("\"totalSeats\":%d,", tm.totalSeats);
-                        out.print("\"carriages\":[");
-                        for (int i = 0; i < tm.carriages.size(); i++) {
-                            var cm = tm.carriages.get(i);
-                            if (i > 0) {
-                                out.print(",");
-                            }
-                            out.print("{");
-                            out.printf("\"carriageId\":%d,", cm.carriageId);
-                            out.printf("\"code\":\"%s\",", esc(cm.carriageCode));
-                            out.printf("\"sortOrder\":%d,", cm.sortOrder);
-                            out.printf("\"seatClassCode\":\"%s\",", esc(cm.seatClassCode));
-                            out.printf("\"seatClassName\":\"%s\",", esc(cm.seatClassName));
-                            out.printf("\"seatCount\":%d,", cm.seatCount);
-
-                            out.print("\"seats\":[");
-                            for (int j = 0; j < cm.seats.size(); j++) {
-                                var sm = cm.seats.get(j);
-                                if (j > 0) {
-                                    out.print(",");
-                                }
-                                out.print("{");
-                                out.printf("\"seatId\":%d,", sm.seatId);
-                                out.printf("\"code\":\"%s\",", esc(sm.code));
-                                out.printf("\"seatClassCode\":\"%s\",", esc(sm.seatClassCode));
-                                out.printf("\"seatClassName\":\"%s\",", esc(sm.seatClassName));
-                                out.printf("\"positionInfo\":\"%s\"", esc(sm.positionInfo));
-                                out.print("}");
-                            }
-                            out.print("]"); // seats
-                            out.print("}");
-                        }
-                        out.print("]}");
-                    } catch (SQLException e) {
-                        try (PrintWriter out = res.getWriter()) {
-                            out.print("{}");
-                        }
-                    }
-                }
+//                case "metaRoute" -> {
+//                    res.setCharacterEncoding("UTF-8");
+//                    res.setContentType("application/json; charset=UTF-8");
+//
+//                    Integer rid = null;
+//                    try {
+//                        String ridRaw = req.getParameter("route_id");
+//                        if (ridRaw != null && !ridRaw.isBlank()) {
+//                            rid = Integer.parseInt(ridRaw);
+//                        }
+//                    } catch (NumberFormatException ignore) {
+//                        rid = null;
+//                    }
+//
+//                    try (PrintWriter out = res.getWriter()) {
+//                        vn.ttapp.model.Route r = (rid != null) ? routeDao.findByIdWithStations(rid) : null;
+//                        if (r == null) {
+//                            out.print("{}");
+//                            return;
+//                        }
+//                        out.print("{");
+//                        out.printf("\"routeId\":%d,", r.getRouteId());
+//                        out.printf("\"code\":\"%s\",", esc(r.getCode()));
+//                        out.printf("\"originName\":\"%s\",", esc(r.getOriginName()));
+//                        out.printf("\"destName\":\"%s\"", esc(r.getDestName()));
+//                        out.print("}");
+//                    } catch (SQLException e) {
+//                        try (PrintWriter out = res.getWriter()) {
+//                            out.print("{}");
+//                        }
+//                    }
+//                }
+//                case "metaTrain" -> {
+//                    res.setCharacterEncoding("UTF-8");
+//                    res.setContentType("application/json; charset=UTF-8");
+//                    Integer tid = null;
+//                    try {
+//                        String tidRaw = req.getParameter("train_id");
+//                        if (tidRaw != null && !tidRaw.isBlank()) {
+//                            tid = Integer.parseInt(tidRaw);
+//                        }
+//                    } catch (NumberFormatException ignore) {
+//                        tid = null;
+//                    }
+//
+//                    try (PrintWriter out = res.getWriter()) {
+//                        TrainDao.TrainMeta tm = (tid != null) ? trainDao.findDetail(tid) : null;
+//                        if (tm == null) {
+//                            out.print("{}");
+//                            return;
+//                        }
+//
+//                        out.print("{");
+//                        out.printf("\"trainId\":%d,", tm.trainId);
+//                        out.printf("\"code\":\"%s\",", esc(tm.code));
+//                        out.printf("\"name\":\"%s\",", esc(tm.name));
+//                        out.printf("\"totalCarriages\":%d,", tm.totalCarriages);
+//                        out.printf("\"totalSeats\":%d,", tm.totalSeats);
+//                        out.print("\"carriages\":[");
+//                        for (int i = 0; i < tm.carriages.size(); i++) {
+//                            var cm = tm.carriages.get(i);
+//                            if (i > 0) {
+//                                out.print(",");
+//                            }
+//                            out.print("{");
+//                            out.printf("\"carriageId\":%d,", cm.carriageId);
+//                            out.printf("\"code\":\"%s\",", esc(cm.carriageCode));
+//                            out.printf("\"sortOrder\":%d,", cm.sortOrder);
+//                            out.printf("\"seatClassCode\":\"%s\",", esc(cm.seatClassCode));
+//                            out.printf("\"seatClassName\":\"%s\",", esc(cm.seatClassName));
+//                            out.printf("\"seatCount\":%d,", cm.seatCount);
+//
+//                            out.print("\"seats\":[");
+//                            for (int j = 0; j < cm.seats.size(); j++) {
+//                                var sm = cm.seats.get(j);
+//                                if (j > 0) {
+//                                    out.print(",");
+//                                }
+//                                out.print("{");
+//                                out.printf("\"seatId\":%d,", sm.seatId);
+//                                out.printf("\"code\":\"%s\",", esc(sm.code));
+//                                out.printf("\"seatClassCode\":\"%s\",", esc(sm.seatClassCode));
+//                                out.printf("\"seatClassName\":\"%s\",", esc(sm.seatClassName));
+//                                out.printf("\"positionInfo\":\"%s\"", esc(sm.positionInfo));
+//                                out.print("}");
+//                            }
+//                            out.print("]"); // seats
+//                            out.print("}");
+//                        }
+//                        out.print("]}");
+//                    } catch (SQLException e) {
+//                        try (PrintWriter out = res.getWriter()) {
+//                            out.print("{}");
+//                        }
+//                    }
+//                }
 
                 default -> {
                     req.setAttribute("list", service.findAll());

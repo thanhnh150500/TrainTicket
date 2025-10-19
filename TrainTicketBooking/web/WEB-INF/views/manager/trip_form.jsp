@@ -75,14 +75,14 @@
                 </div>
 
                 <!-- Panel meta TUYẾN -->
-                <div id="routePane" class="mt-3">
+<!--                <div id="routePane" class="mt-3">
                     <div class="alert alert-info">Chọn Tuyến để xem thông tin.</div>
-                </div>
+                </div>-->
 
                 <!-- Panel meta TÀU -->
-                <div id="trainPane" class="mt-3">
+<!--                <div id="trainPane" class="mt-3">
                     <div class="alert alert-info">Chọn Đoàn tàu để xem thông tin.</div>
-                </div>
+                </div>-->
 
                 <hr class="my-4"/>
 
@@ -119,7 +119,7 @@
             </form>
         </div>
 
-        <script>
+<!--        <script>
       const ctx = '${pageContext.request.contextPath}';
       const routeSel = document.getElementById('route_id');
       const trainSel = document.getElementById('train_id');
@@ -259,6 +259,6 @@
       // Tự load khi vào trang (edit có giá trị sẵn)
       loadRouteMeta();
       loadTrainMeta();
-        </script>
+        </script>-->
     </body>
 </html>
