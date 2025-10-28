@@ -1,0 +1,253 @@
+/*
+Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/CascadeStyleSheet.css to edit this template
+*/
+/* 
+    Created on : Oct 28, 2025, 11:23:59 PM
+    Author     : New User
+*/
+
+/* ===== Header “Chiều đi …” ===== */
+.route-header .flag{
+    background:#1f82d1;
+    color:#fff;
+    border-radius:6px 0 0 6px;
+    padding:6px 10px;
+    font-weight:700
+}
+.route-header .route-text{
+    background:#e9f4ff;
+    border-radius:0 6px 6px 0;
+    padding:6px 10px;
+    color:#0b5fa6
+}
+
+/* ===== Train cards ===== */
+.train-cards{
+    overflow:auto;
+}
+.train-card{
+    width:140px;
+    min-height:160px;
+    background:#f2f4f7;
+    border:2px solid #cfd6e0;
+    border-radius:12px;
+    padding:8px 10px;
+    position:relative;
+    text-align:center;
+    flex:0 0 auto
+}
+.train-card .train-head{
+    font-weight:800;
+    font-size:20px;
+    margin-bottom:6px
+}
+.train-card .kv{
+    font-size:12px;
+    color:#6b7280
+}
+.train-card .vv{
+    font-weight:700;
+    margin-bottom:4px
+}
+.train-card.active{
+    background:#008bdc;
+    color:#fff;
+    border-color:#008bdc
+}
+.train-card.active .kv{
+    color:#cde9ff
+}
+.train-card .wheels{
+    position:absolute;
+    left:16px;
+    right:16px;
+    bottom:6px;
+    height:8px;
+    background:linear-gradient(90deg,transparent 0,transparent 15%,#333 15%,#333 35%,transparent 35%,transparent 65%,#333 65%,#333 85%,transparent 85%,transparent 100%);
+    border-radius:4px
+}
+.train-card.ghost{
+    opacity:.6
+}
+
+/* ===== Track line ===== */
+.train-line{
+    height:6px;
+    background:#454f63;
+    border-radius:3px;
+    margin:10px 0
+}
+
+/* ===== Mini cars (toa nhỏ 1..n) ===== */
+.mini-cars .car{
+    width:36px;
+    height:18px;
+    border-radius:3px;
+    background:#7bbaf1;
+    position:relative;
+    cursor:pointer
+}
+.mini-cars .car.green{
+    background:#7fd7a5
+}
+.mini-cars .car.orange{
+    background:#ffb169
+}
+.mini-cars .car.blue{
+    background:#7bbaf1
+}
+.mini-cars .car .num{
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    font-size:12px;
+    font-weight:700;
+    color:#0b2b4a
+}
+.mini-cars .car.active{
+    outline:3px solid #0b7cd6
+}
+
+/* ===== Coach wrapper ===== */
+.coach-wrapper{
+    border:2px solid #cbd5e1;
+    border-radius:14px;
+    padding:14px;
+    background:#fff
+}
+.coach-header .coach-title{
+    font-size:18px;
+    font-weight:800;
+    color:#0b5fa6
+}
+.pager .nav-btn{
+    width:36px;
+    height:36px;
+    border-radius:100px;
+    border:1px solid #b6c2d0;
+    background:#fff;
+    font-weight:700
+}
+.pager .nav-btn:hover{
+    background:#eef5ff
+}
+
+/* braces */
+.coach-body{
+    display:flex;
+    align-items:stretch;
+    gap:10px;
+    margin-top:10px
+}
+.brace{
+    width:24px;
+    border:3px solid #2a69b6;
+    border-radius:12px;
+}
+.brace.left{
+    border-right:0
+}
+.brace.right{
+    border-left:0
+}
+
+/* ===== Seat grid 2–aisle–2 ===== */
+.seat-area{
+    flex:1;
+    border:2px solid #2a69b6;
+    border-radius:10px;
+    padding:16px
+}
+.seat-grid{
+    display:grid;
+    grid-auto-rows:48px;
+    grid-template-columns: repeat(2,56px) 24px repeat(2,56px);
+    gap:10px 14px;
+}
+.aisle{
+    grid-column:3;
+    width:24px
+}
+
+.seat{
+    width:56px;
+    height:48px;
+    border-radius:8px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:800;
+    border:2px solid #ccd5e1;
+    background:#f7fafc;
+    cursor:pointer;
+}
+.seat.free{
+    background:#eaf9ee;
+    border-color:#b9e7c6;
+    color:#0a7a3b
+}
+.seat.hold{
+    background:#ffe7cc;
+    border-color:#ffc38f;
+    color:#9a4a00;
+    cursor:not-allowed
+}
+.seat.sold{
+    background:#eceff3;
+    border-color:#d3d9e3;
+    color:#8d99a8;
+    cursor:not-allowed
+}
+.seat.chosen{
+    background:#e5efff;
+    border-color:#b7d1ff;
+    color:#0b5fa6
+}
+
+.legend .dot{
+    display:inline-block;
+    width:14px;
+    height:14px;
+    border-radius:3px;
+    margin-right:6px;
+    transform:translateY(2px)
+}
+.legend .free{
+    background:#eaf9ee;
+    border:2px solid #b9e7c6
+}
+.legend .hold{
+    background:#ffe7cc;
+    border:2px solid #ffc38f
+}
+.legend .sold{
+    background:#eceff3;
+    border:2px solid #d3d9e3
+}
+.legend .chosen{
+    background:#e5efff;
+    border:2px solid #b7d1ff
+}
+.muted{
+    color:#6b7280
+}
+
+.addon{
+    border-top:1px dashed #cbd5e1;
+    padding-top:14px
+}
+.addon-title{
+    font-weight:800;
+    margin-bottom:8px;
+    color:#0b5fa6
+}
+.addon-row{
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:10px;
+    padding:12px
+}
+
+

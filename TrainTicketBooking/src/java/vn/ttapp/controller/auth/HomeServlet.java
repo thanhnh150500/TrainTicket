@@ -1,56 +1,39 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/Servlet.java to edit this template
- */
 package vn.ttapp.controller.auth;
 
-import java.io.IOException;
-import java.io.PrintWriter;
+import vn.ttapp.dao.StationDao;
+import vn.ttapp.model.Station;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.*;
+import java.io.IOException;
+import java.util.List;
 
-/**
- *
- * @author New User
- */
 @WebServlet(name = "HomeServlet", urlPatterns = {"/home"})
 public class HomeServlet extends HttpServlet {
 
-    protected void processRequest(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        response.setContentType("text/html;charset=UTF-8");
-        try (PrintWriter out = response.getWriter()) {
-            /* TODO output your page here. You may use following sample code. */
-            out.println("<!DOCTYPE html>");
-            out.println("<html>");
-            out.println("<head>");
-            out.println("<title>Servlet HomeServlet</title>");            
-            out.println("</head>");
-            out.println("<body>");
-            out.println("<h1>Servlet HomeServlet at " + request.getContextPath() + "</h1>");
-            out.println("</body>");
-            out.println("</html>");
-        }
-    }
+    private final StationDao stationDao = new StationDao();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        try {
+            // Lấy danh sách tất cả các ga trong DB để hiển thị datalist
+            List<Station> stations = stationDao.findAll();
+            request.setAttribute("stations", stations);
+        } catch (Exception e) {
+            e.printStackTrace();
+            request.setAttribute("stations", java.util.List.of());
+        }
+        request.setAttribute("today", java.time.LocalDate.now().toString());
+        request.setAttribute("ctx", request.getContextPath());
         request.getRequestDispatcher("/WEB-INF/views/home.jsp").forward(request, response);
+
     }
 
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
-        processRequest(request, response);
+        // Không xử lý POST ở đây, form submit tới /tripsearch
+        resp.sendRedirect(req.getContextPath() + "/tripsearch");
     }
-    
-    @Override
-    public String getServletInfo() {
-        return "Short description";
-    }// </editor-fold>
-
 }

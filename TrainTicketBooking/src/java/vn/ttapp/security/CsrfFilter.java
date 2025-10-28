@@ -14,7 +14,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
-
 public class CsrfFilter implements Filter {
 
     private static final Set<String> SAFE_METHODS = Set.of("GET", "HEAD", "OPTIONS");
@@ -35,7 +34,9 @@ public class CsrfFilter implements Filter {
         if (extra != null && !extra.isBlank()) {
             for (String p : extra.split(",")) {
                 String v = p.trim();
-                if (!v.isEmpty()) excludePrefixes.add(v.startsWith("/") ? v : "/" + v);
+                if (!v.isEmpty()) {
+                    excludePrefixes.add(v.startsWith("/") ? v : "/" + v);
+                }
             }
         }
     }
@@ -44,7 +45,7 @@ public class CsrfFilter implements Filter {
     public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
             throws IOException, ServletException {
 
-        HttpServletRequest  r = (HttpServletRequest) req;
+        HttpServletRequest r = (HttpServletRequest) req;
         HttpServletResponse w = (HttpServletResponse) res;
         String ctx = r.getContextPath();
         String uri = r.getRequestURI();

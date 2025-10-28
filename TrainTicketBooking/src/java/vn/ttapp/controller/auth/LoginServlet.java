@@ -60,7 +60,7 @@ public class LoginServlet extends HttpServlet {
             }
             HttpSession ss = req.getSession(true);
             ss.setAttribute("authUser", u);
-            res.sendRedirect(req.getContextPath() + "/");
+            res.sendRedirect(req.getContextPath() + "/manager");
         } catch (Exception e) {
             throw new ServletException(e);
         }
