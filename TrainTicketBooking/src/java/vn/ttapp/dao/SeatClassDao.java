@@ -21,7 +21,7 @@ public class SeatClassDao {
         String sql = """
             SELECT seat_class_id, code, name
             FROM dbo.SeatClass
-            ORDER BY name
+            ORDER BY code, name
         """;
         List<SeatClass> list = new ArrayList<>();
         try (Connection c = Db.getConnection();
@@ -31,6 +31,13 @@ public class SeatClassDao {
         }
         return list;
     }
+    public boolean existsById(int id) throws SQLException {
+    String sql = "SELECT 1 FROM dbo.SeatClass WHERE seat_class_id = ?";
+    try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+        ps.setInt(1, id);
+        try (ResultSet rs = ps.executeQuery()) { return rs.next(); }
+    }
+}
 
     public SeatClass findById(int id) throws SQLException {
         String sql = """

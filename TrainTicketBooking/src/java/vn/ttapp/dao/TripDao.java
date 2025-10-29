@@ -93,7 +93,7 @@ public class TripDao {
             ps.setInt(1, routeId);
             ps.setInt(2, trainId);
             ps.setTimestamp(3, Timestamp.valueOf(departAt));
-            ps.setTimestamp(4, Timestamp.valueOf(arriveAt));
+            ps.setTimestamp(4, (arriveAt == null) ? null : Timestamp.valueOf(arriveAt));
             ps.setString(5, status);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -114,7 +114,7 @@ public class TripDao {
             ps.setInt(1, t.getRouteId());
             ps.setInt(2, t.getTrainId());
             ps.setTimestamp(3, Timestamp.valueOf(t.getDepartAt()));
-            ps.setTimestamp(4, Timestamp.valueOf(t.getArriveAt()));
+            ps.setTimestamp(4, (t.getArriveAt() == null) ? null : Timestamp.valueOf(t.getArriveAt()));
             ps.setString(5, t.getStatus());
             ps.setInt(6, t.getTripId());
             return ps.executeUpdate();

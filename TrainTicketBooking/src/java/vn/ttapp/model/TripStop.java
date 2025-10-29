@@ -1,27 +1,22 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
-package vn.ttapp.mode;
+// vn/ttapp/model/TripStop.java
+package vn.ttapp.model;
 
 import java.time.LocalDateTime;
 
-/**
- *
- * @author dotri
- */
 public class TripStop {
-    public Integer tripStopId;
-    public Integer tripId;
-    public Integer stationId;
-    public LocalDateTime arrTime; // nullable
-    public LocalDateTime depTime; // nullable
-    public Integer stopOrder;
+
+    private Integer tripStopId;
+    private Integer tripId;
+    private Integer stationId;
+    private LocalDateTime arrTime; // nullable
+    private LocalDateTime depTime; // nullable
+    private Integer stopOrder;
 
     public TripStop() {
     }
 
-    public TripStop(Integer tripStopId, Integer tripId, Integer stationId, LocalDateTime arrTime, LocalDateTime depTime, Integer stopOrder) {
+    public TripStop(Integer tripStopId, Integer tripId, Integer stationId,
+            LocalDateTime arrTime, LocalDateTime depTime, Integer stopOrder) {
         this.tripStopId = tripStopId;
         this.tripId = tripId;
         this.stationId = stationId;
@@ -77,5 +72,4 @@ public class TripStop {
     public void setStopOrder(Integer stopOrder) {
         this.stopOrder = stopOrder;
     }
-    
 }

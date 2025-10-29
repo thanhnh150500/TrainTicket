@@ -39,9 +39,11 @@
                     <select name="origin_station_id" class="form-select" required>
                         <option value="">-- chọn ga --</option>
                         <c:forEach items="${stations}" var="s">
-                            <option value="${s.stationId}" ${r.originStationId != null && r.originStationId == s.stationId ? 'selected' : ''}>
-                                ${s.name} (${s.code})
+                            <option value="${s.stationId}"
+                                    <c:if test="${r.originStationId != null && r.originStationId == s.stationId}">selected</c:if>>
+                                <c:out value="${s.name}"/> (<c:out value="${s.code}"/>)
                             </option>
+
                         </c:forEach>
                     </select>
                 </div>
@@ -50,8 +52,9 @@
                     <select name="dest_station_id" class="form-select" required>
                         <option value="">-- chọn ga --</option>
                         <c:forEach items="${stations}" var="s">
-                            <option value="${s.stationId}" ${r.destStationId != null && r.destStationId == s.stationId ? 'selected' : ''}>
-                                ${s.name} (${s.code})
+                            <option value="${s.stationId}"
+                                    <c:if test="${r.originStationId != null && r.originStationId == s.stationId}">selected</c:if>>
+                                <c:out value="${s.name}"/> (<c:out value="${s.code}"/>)
                             </option>
                         </c:forEach>
                     </select>
@@ -60,8 +63,11 @@
 
             <div class="mt-3">
                 <label class="form-label">Mã tuyến (code)</label>
-                <input type="text" name="code" class="form-control" value="${r.code}" required maxlength="40"
-                       placeholder="Ví dụ: HNI-HCM"/>
+                <input type="text" name="code" class="form-control"
+                       value="<c:out value='${r.code}'/>"
+                       required maxlength="40" placeholder="Ví dụ: HNI-HCM"
+                       pattern="[A-Za-z0-9\-]+"
+                       title="Chỉ chữ hoa/thường, số và dấu '-'">
                 <div class="form-text">Gợi ý: &lt;OriginCode&gt;-&lt;DestCode&gt; (duy nhất).</div>
             </div>
 

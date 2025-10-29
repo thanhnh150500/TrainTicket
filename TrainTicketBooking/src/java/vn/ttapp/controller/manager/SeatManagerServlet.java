@@ -44,17 +44,23 @@ public class SeatManagerServlet extends HttpServlet {
                     req.getRequestDispatcher("/WEB-INF/views/manager/seat_form.jsp").forward(req, res);
                 }
                 case "edit" -> {
-                    int id = Integer.parseInt(req.getParameter("id"));
-                    Seat s = service.findById(id);
-                    if (s == null) {
-                        req.getSession().setAttribute("flash_error", "Không tìm thấy ghế.");
+                    try {
+                        int id = Integer.parseInt(req.getParameter("id"));
+                        Seat s = service.findById(id);
+                        if (s == null) {
+                            req.getSession().setAttribute("flash_error", "Không tìm thấy ghế.");
+                            res.sendRedirect(req.getContextPath() + "/manager/seats");
+                            return;
+                        }
+                        loadRefs(req);
+                        req.setAttribute("s", s);
+                        req.getRequestDispatcher("/WEB-INF/views/manager/seat_form.jsp").forward(req, res);
+                    } catch (NumberFormatException nfe) {
+                        req.getSession().setAttribute("flash_error", "ID không hợp lệ.");
                         res.sendRedirect(req.getContextPath() + "/manager/seats");
-                        return;
                     }
-                    loadRefs(req);
-                    req.setAttribute("s", s);
-                    req.getRequestDispatcher("/WEB-INF/views/manager/seat_form.jsp").forward(req, res);
                 }
+
                 default -> {
                     req.setAttribute("list", service.findAll());
                     req.getRequestDispatcher("/WEB-INF/views/manager/seat_list.jsp").forward(req, res);
@@ -130,11 +136,16 @@ public class SeatManagerServlet extends HttpServlet {
                     }
                 }
                 case "delete" -> {
-                    int id = Integer.parseInt(req.getParameter("id"));
-                    service.delete(id);
-                    req.getSession().setAttribute("flash_success", "Đã xóa ghế.");
+                    try {
+                        int id = Integer.parseInt(req.getParameter("id"));
+                        service.delete(id);
+                        req.getSession().setAttribute("flash_success", "Đã xóa ghế.");
+                    } catch (NumberFormatException nfe) {
+                        req.getSession().setAttribute("flash_error", "ID không hợp lệ.");
+                    }
                     res.sendRedirect(req.getContextPath() + "/manager/seats");
                 }
+
                 default ->
                     res.sendRedirect(req.getContextPath() + "/manager/seats");
             }

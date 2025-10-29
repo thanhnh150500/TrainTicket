@@ -32,11 +32,12 @@
             <tbody>
                 <c:forEach items="${list}" var="s">
                     <tr>
-                        <td>${s.stationId}</td>
-                        <td>${s.code}</td>
-                        <td>${s.name}</td>
-                        <td>${s.address}</td>
-                        <td>${s.cityName}</td>
+                        <td><c:out value="${s.stationId}"/></td>
+                        <td><c:out value="${s.code}"/></td>
+                        <td><c:out value="${s.name}"/></td>
+                        <td><c:out value="${s.address}"/></td>
+                        <td><c:out value="${s.cityName}"/></td>
+
                         <td class="d-flex gap-2">
                             <a class="btn btn-sm btn-outline-secondary"
                                href="${pageContext.request.contextPath}/manager/stations?op=edit&id=${s.stationId}">Sửa</a>
@@ -87,15 +88,15 @@
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
         <script>
-                                (function () {
-                                    const successEl = document.getElementById('toast-success');
-                                    const errorEl = document.getElementById('toast-error');
-                                    [successEl, errorEl].forEach(function (el) {
-                                        if (!el)
-                                            return;
-                                        new bootstrap.Toast(el, {delay: 2500, autohide: true}).show();
-                                    });
-                                })();
+                                            (function () {
+                                                const successEl = document.getElementById('toast-success');
+                                                const errorEl = document.getElementById('toast-error');
+                                                [successEl, errorEl].forEach(function (el) {
+                                                    if (!el)
+                                                        return;
+                                                    new bootstrap.Toast(el, {delay: 2500, autohide: true}).show();
+                                                });
+                                            })();
         </script>
     </body>
 </html>

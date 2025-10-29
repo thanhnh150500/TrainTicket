@@ -36,17 +36,23 @@ public class StationManagerServlet extends HttpServlet {
                     req.setAttribute("s", new Station());
                     req.getRequestDispatcher("/WEB-INF/views/manager/station_form.jsp").forward(req, res);
                 }
+                // case "edit"
                 case "edit" -> {
-                    int id = Integer.parseInt(req.getParameter("id"));
-                    Station s = service.findById(id);
-                    if (s == null) {
-                        req.getSession().setAttribute("flash_error", "Không tìm thấy ga.");
+                    try {
+                        int id = Integer.parseInt(req.getParameter("id"));
+                        Station s = service.findById(id);
+                        if (s == null) {
+                            req.getSession().setAttribute("flash_error", "Không tìm thấy ga.");
+                            res.sendRedirect(req.getContextPath() + "/manager/stations");
+                            return;
+                        }
+                        loadCities(req);
+                        req.setAttribute("s", s);
+                        req.getRequestDispatcher("/WEB-INF/views/manager/station_form.jsp").forward(req, res);
+                    } catch (NumberFormatException nfe) {
+                        req.getSession().setAttribute("flash_error", "ID không hợp lệ.");
                         res.sendRedirect(req.getContextPath() + "/manager/stations");
-                        return;
                     }
-                    loadCities(req);
-                    req.setAttribute("s", s);
-                    req.getRequestDispatcher("/WEB-INF/views/manager/station_form.jsp").forward(req, res);
                 }
                 default -> {
                     List<Station> list = service.findAll();
@@ -130,9 +136,13 @@ public class StationManagerServlet extends HttpServlet {
                     }
                 }
                 case "delete" -> {
-                    int id = Integer.parseInt(req.getParameter("id"));
-                    service.delete(id);
-                    req.getSession().setAttribute("flash_success", "Đã xóa ga.");
+                    try {
+                        int id = Integer.parseInt(req.getParameter("id"));
+                        service.delete(id);
+                        req.getSession().setAttribute("flash_success", "Đã xóa ga.");
+                    } catch (NumberFormatException nfe) {
+                        req.getSession().setAttribute("flash_error", "ID không hợp lệ.");
+                    }
                     res.sendRedirect(req.getContextPath() + "/manager/stations");
                 }
                 default ->

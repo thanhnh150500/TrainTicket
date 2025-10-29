@@ -11,14 +11,8 @@ public class StationDao {
 
     private Station map(ResultSet rs) throws SQLException {
         Station s = new Station();
-        s.setStationId(rs.getInt("station_id"));
-        if (rs.wasNull()) {
-            s.setStationId(null);
-        }
-        s.setCityId(rs.getInt("city_id"));
-        if (rs.wasNull()) {
-            s.setCityId(null);
-        }
+        s.setStationId(rs.getInt("station_id"));   // NOT NULL
+        s.setCityId(rs.getInt("city_id"));         // NOT NULL
         s.setCode(rs.getString("code"));
         s.setName(rs.getString("name"));
         s.setAddress(rs.getString("address"));

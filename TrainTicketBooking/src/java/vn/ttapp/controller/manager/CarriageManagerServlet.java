@@ -44,16 +44,21 @@ public class CarriageManagerServlet extends HttpServlet {
                     req.getRequestDispatcher("/WEB-INF/views/manager/carriage_form.jsp").forward(req, res);
                 }
                 case "edit" -> {
-                    int id = Integer.parseInt(req.getParameter("id"));
-                    Carriage c = service.findById(id);
-                    if (c == null) {
-                        req.getSession().setAttribute("flash_error", "Không tìm thấy toa.");
+                    try {
+                        int id = Integer.parseInt(req.getParameter("id"));
+                        Carriage c = service.findById(id);
+                        if (c == null) {
+                            req.getSession().setAttribute("flash_error", "Không tìm thấy toa.");
+                            res.sendRedirect(req.getContextPath() + "/manager/carriages");
+                            return;
+                        }
+                        loadRefs(req);
+                        req.setAttribute("c", c);
+                        req.getRequestDispatcher("/WEB-INF/views/manager/carriage_form.jsp").forward(req, res);
+                    } catch (NumberFormatException nfe) {
+                        req.getSession().setAttribute("flash_error", "ID không hợp lệ.");
                         res.sendRedirect(req.getContextPath() + "/manager/carriages");
-                        return;
                     }
-                    loadRefs(req);
-                    req.setAttribute("c", c);
-                    req.getRequestDispatcher("/WEB-INF/views/manager/carriage_form.jsp").forward(req, res);
                 }
                 default -> {
                     req.setAttribute("list", service.findAll());
@@ -129,9 +134,13 @@ public class CarriageManagerServlet extends HttpServlet {
                     }
                 }
                 case "delete" -> {
-                    int id = Integer.parseInt(req.getParameter("id"));
-                    service.delete(id);
-                    req.getSession().setAttribute("flash_success", "Đã xóa toa.");
+                    try {
+                        int id = Integer.parseInt(req.getParameter("id"));
+                        service.delete(id);
+                        req.getSession().setAttribute("flash_success", "Đã xóa toa.");
+                    } catch (NumberFormatException nfe) {
+                        req.getSession().setAttribute("flash_error", "ID không hợp lệ.");
+                    }
                     res.sendRedirect(req.getContextPath() + "/manager/carriages");
                 }
                 default ->

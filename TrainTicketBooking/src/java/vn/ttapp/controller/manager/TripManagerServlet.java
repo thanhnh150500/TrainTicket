@@ -11,7 +11,6 @@ import vn.ttapp.model.Train;
 import vn.ttapp.service.TripService;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,10 +23,26 @@ public class TripManagerServlet extends HttpServlet {
     private final TrainDao trainDao = new TrainDao();
 
     private void loadRefs(HttpServletRequest req) throws SQLException {
-        List<Route> routes = routeDao.findAll(); // có code, originName, destName
-        List<Train> trains = trainDao.findAll(); // có trainId, code, name
+        List<Route> routes = routeDao.findAll();
+        List<Train> trains = trainDao.findAll();
         req.setAttribute("routes", routes);
         req.setAttribute("trains", trains);
+    }
+
+    private static String toInputValue(LocalDateTime dt) {
+        if (dt == null) {
+            return "";
+        }
+        String s = dt.toString(); // 2025-10-27T14:05:23.123
+        // chỉ lấy đến phút: yyyy-MM-ddTHH:mm
+        int i = s.indexOf(':');
+        if (i > 0) {
+            int secondSep = s.indexOf(':', i + 1);
+            if (secondSep > 0) {
+                return s.substring(0, secondSep);
+            }
+        }
+        return s.length() >= 16 ? s.substring(0, 16) : s;
     }
 
     @Override
@@ -43,7 +58,10 @@ public class TripManagerServlet extends HttpServlet {
             switch (op) {
                 case "new" -> {
                     loadRefs(req);
-                    req.setAttribute("t", new Trip());
+                    Trip t = new Trip();
+                    req.setAttribute("t", t);
+                    req.setAttribute("departAtInput", "");
+                    req.setAttribute("arriveAtInput", "");
                     req.getRequestDispatcher("/WEB-INF/views/manager/trip_form.jsp").forward(req, res);
                 }
                 case "edit" -> {
@@ -56,105 +74,28 @@ public class TripManagerServlet extends HttpServlet {
                     }
                     loadRefs(req);
                     req.setAttribute("t", t);
+                    req.setAttribute("departAtInput", toInputValue(t.getDepartAt()));
+                    req.setAttribute("arriveAtInput", toInputValue(t.getArriveAt()));
                     req.getRequestDispatcher("/WEB-INF/views/manager/trip_form.jsp").forward(req, res);
                 }
-//                case "metaRoute" -> {
-//                    res.setCharacterEncoding("UTF-8");
-//                    res.setContentType("application/json; charset=UTF-8");
-//
-//                    Integer rid = null;
-//                    try {
-//                        String ridRaw = req.getParameter("route_id");
-//                        if (ridRaw != null && !ridRaw.isBlank()) {
-//                            rid = Integer.parseInt(ridRaw);
-//                        }
-//                    } catch (NumberFormatException ignore) {
-//                        rid = null;
-//                    }
-//
-//                    try (PrintWriter out = res.getWriter()) {
-//                        vn.ttapp.model.Route r = (rid != null) ? routeDao.findByIdWithStations(rid) : null;
-//                        if (r == null) {
-//                            out.print("{}");
-//                            return;
-//                        }
-//                        out.print("{");
-//                        out.printf("\"routeId\":%d,", r.getRouteId());
-//                        out.printf("\"code\":\"%s\",", esc(r.getCode()));
-//                        out.printf("\"originName\":\"%s\",", esc(r.getOriginName()));
-//                        out.printf("\"destName\":\"%s\"", esc(r.getDestName()));
-//                        out.print("}");
-//                    } catch (SQLException e) {
-//                        try (PrintWriter out = res.getWriter()) {
-//                            out.print("{}");
-//                        }
-//                    }
-//                }
-//                case "metaTrain" -> {
-//                    res.setCharacterEncoding("UTF-8");
-//                    res.setContentType("application/json; charset=UTF-8");
-//                    Integer tid = null;
-//                    try {
-//                        String tidRaw = req.getParameter("train_id");
-//                        if (tidRaw != null && !tidRaw.isBlank()) {
-//                            tid = Integer.parseInt(tidRaw);
-//                        }
-//                    } catch (NumberFormatException ignore) {
-//                        tid = null;
-//                    }
-//
-//                    try (PrintWriter out = res.getWriter()) {
-//                        TrainDao.TrainMeta tm = (tid != null) ? trainDao.findDetail(tid) : null;
-//                        if (tm == null) {
-//                            out.print("{}");
-//                            return;
-//                        }
-//
-//                        out.print("{");
-//                        out.printf("\"trainId\":%d,", tm.trainId);
-//                        out.printf("\"code\":\"%s\",", esc(tm.code));
-//                        out.printf("\"name\":\"%s\",", esc(tm.name));
-//                        out.printf("\"totalCarriages\":%d,", tm.totalCarriages);
-//                        out.printf("\"totalSeats\":%d,", tm.totalSeats);
-//                        out.print("\"carriages\":[");
-//                        for (int i = 0; i < tm.carriages.size(); i++) {
-//                            var cm = tm.carriages.get(i);
-//                            if (i > 0) {
-//                                out.print(",");
-//                            }
-//                            out.print("{");
-//                            out.printf("\"carriageId\":%d,", cm.carriageId);
-//                            out.printf("\"code\":\"%s\",", esc(cm.carriageCode));
-//                            out.printf("\"sortOrder\":%d,", cm.sortOrder);
-//                            out.printf("\"seatClassCode\":\"%s\",", esc(cm.seatClassCode));
-//                            out.printf("\"seatClassName\":\"%s\",", esc(cm.seatClassName));
-//                            out.printf("\"seatCount\":%d,", cm.seatCount);
-//
-//                            out.print("\"seats\":[");
-//                            for (int j = 0; j < cm.seats.size(); j++) {
-//                                var sm = cm.seats.get(j);
-//                                if (j > 0) {
-//                                    out.print(",");
-//                                }
-//                                out.print("{");
-//                                out.printf("\"seatId\":%d,", sm.seatId);
-//                                out.printf("\"code\":\"%s\",", esc(sm.code));
-//                                out.printf("\"seatClassCode\":\"%s\",", esc(sm.seatClassCode));
-//                                out.printf("\"seatClassName\":\"%s\",", esc(sm.seatClassName));
-//                                out.printf("\"positionInfo\":\"%s\"", esc(sm.positionInfo));
-//                                out.print("}");
-//                            }
-//                            out.print("]"); // seats
-//                            out.print("}");
-//                        }
-//                        out.print("]}");
-//                    } catch (SQLException e) {
-//                        try (PrintWriter out = res.getWriter()) {
-//                            out.print("{}");
-//                        }
-//                    }
-//                }
+                case "view" -> {
+                    int id = Integer.parseInt(req.getParameter("id"));
+                    Trip t = service.findById(id);
+                    if (t == null) {
+                        req.getSession().setAttribute("flash_error", "Không tìm thấy chuyến.");
+                        res.sendRedirect(req.getContextPath() + "/manager/trips");
+                        return;
+                    }
+                    // Route đã có origin/dest name ngay trong RouteDao.findById()
+                    var routeMeta = routeDao.findById(t.getRouteId());
+                    // Dùng findDetail để lấy full train meta (toa/ghế)
+                    var trainMeta = new TrainDao().findDetail(t.getTrainId());
 
+                    req.setAttribute("t", t);
+                    req.setAttribute("routeMeta", routeMeta);
+                    req.setAttribute("trainMeta", trainMeta);
+                    req.getRequestDispatcher("/WEB-INF/views/manager/trip_view.jsp").forward(req, res);
+                }
                 default -> {
                     req.setAttribute("list", service.findAll());
                     req.getRequestDispatcher("/WEB-INF/views/manager/trip_list.jsp").forward(req, res);
@@ -162,14 +103,10 @@ public class TripManagerServlet extends HttpServlet {
             }
         } catch (SQLException e) {
             throw new ServletException(e);
+        } catch (NumberFormatException nfe) {
+            req.getSession().setAttribute("flash_error", "Tham số không hợp lệ.");
+            res.sendRedirect(req.getContextPath() + "/manager/trips");
         }
-    }
-
-    private static String esc(String s) {
-        if (s == null) {
-            return "";
-        }
-        return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     @Override
@@ -187,7 +124,7 @@ public class TripManagerServlet extends HttpServlet {
                     String idRaw = req.getParameter("trip_id");
                     String routeIdRaw = req.getParameter("route_id");
                     String trainIdRaw = req.getParameter("train_id");
-                    String departRaw = req.getParameter("depart_at");   // yyyy-MM-ddTHH:mm
+                    String departRaw = req.getParameter("depart_at");
                     String arriveRaw = req.getParameter("arrive_at");
                     String status = req.getParameter("status");
 
@@ -221,6 +158,8 @@ public class TripManagerServlet extends HttpServlet {
                         t.setStatus(status);
                         loadRefs(req);
                         req.setAttribute("t", t);
+                        req.setAttribute("departAtInput", departRaw == null ? "" : departRaw);
+                        req.setAttribute("arriveAtInput", arriveRaw == null ? "" : arriveRaw);
                         req.getRequestDispatcher("/WEB-INF/views/manager/trip_form.jsp").forward(req, res);
                         return;
                     }
@@ -229,6 +168,8 @@ public class TripManagerServlet extends HttpServlet {
                         Trip t = new Trip(null, routeId, trainId, departAt, arriveAt, status);
                         loadRefs(req);
                         req.setAttribute("t", t);
+                        req.setAttribute("departAtInput", departRaw);
+                        req.setAttribute("arriveAtInput", arriveRaw);
                         req.getRequestDispatcher("/WEB-INF/views/manager/trip_form.jsp").forward(req, res);
                         return;
                     }
@@ -236,10 +177,12 @@ public class TripManagerServlet extends HttpServlet {
                     if (idRaw == null || idRaw.isBlank()) {
                         Integer newId = service.create(routeId, trainId, departAt, arriveAt, status);
                         if (newId == null) {
-                            req.setAttribute("error", "Không thể tạo chuyến.");
+                            req.setAttribute("error", "Không thể tạo chuyến (tuyến/tàu không hợp lệ, trạng thái sai hoặc thời gian không hợp lệ).");
                             Trip t = new Trip(null, routeId, trainId, departAt, arriveAt, status);
                             loadRefs(req);
                             req.setAttribute("t", t);
+                            req.setAttribute("departAtInput", departRaw);
+                            req.setAttribute("arriveAtInput", arriveRaw);
                             req.getRequestDispatcher("/WEB-INF/views/manager/trip_form.jsp").forward(req, res);
                             return;
                         }
@@ -249,9 +192,11 @@ public class TripManagerServlet extends HttpServlet {
                         Trip t = new Trip(Integer.parseInt(idRaw), routeId, trainId, departAt, arriveAt, status);
                         boolean ok = service.update(t);
                         if (!ok) {
-                            req.setAttribute("error", "Không thể cập nhật chuyến.");
+                            req.setAttribute("error", "Không thể cập nhật chuyến (tuyến/tàu không hợp lệ, trạng thái sai hoặc thời gian không hợp lệ).");
                             loadRefs(req);
                             req.setAttribute("t", t);
+                            req.setAttribute("departAtInput", departRaw);
+                            req.setAttribute("arriveAtInput", arriveRaw);
                             req.getRequestDispatcher("/WEB-INF/views/manager/trip_form.jsp").forward(req, res);
                             return;
                         }
@@ -270,6 +215,9 @@ public class TripManagerServlet extends HttpServlet {
             }
         } catch (SQLException e) {
             req.getSession().setAttribute("flash_error", "Có lỗi hệ thống. Vui lòng thử lại.");
+            res.sendRedirect(req.getContextPath() + "/manager/trips");
+        } catch (NumberFormatException nfe) {
+            req.getSession().setAttribute("flash_error", "Tham số không hợp lệ.");
             res.sendRedirect(req.getContextPath() + "/manager/trips");
         }
     }

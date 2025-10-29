@@ -23,17 +23,24 @@ public class FareRuleDao {
         f.setEffectiveTo(et != null ? et.toLocalDate() : null);
         f.setSeatClassCode(rs.getString("seat_class_code"));
         f.setSeatClassName(rs.getString("seat_class_name"));
+        f.setRouteCode(rs.getString("route_code"));
+        f.setOriginName(rs.getString("origin_name"));
+        f.setDestName(rs.getString("dest_name"));
         return f;
     }
 
     public List<FareRule> findAll() throws SQLException {
         String sql = """
-            SELECT f.fare_rule_id, f.route_id, f.seat_class_id, f.base_price, f.effective_from, f.effective_to,
-                   sc.code AS seat_class_code, sc.name AS seat_class_name
-            FROM dbo.FareRule f
-            JOIN dbo.SeatClass sc ON sc.seat_class_id = f.seat_class_id
-            ORDER BY f.route_id, sc.name, f.effective_from DESC
-        """;
+        SELECT f.fare_rule_id, f.route_id, f.seat_class_id, f.base_price, f.effective_from, f.effective_to,
+               sc.code AS seat_class_code, sc.name AS seat_class_name,
+               r.code AS route_code, so.name AS origin_name, sd.name AS dest_name
+        FROM dbo.FareRule f
+        JOIN dbo.SeatClass sc ON sc.seat_class_id = f.seat_class_id
+        JOIN dbo.Route r      ON r.route_id = f.route_id
+        JOIN dbo.Station so   ON so.station_id = r.origin_station_id
+        JOIN dbo.Station sd   ON sd.station_id = r.dest_station_id
+        ORDER BY r.code, sc.name, f.effective_from DESC
+    """;
         List<FareRule> list = new ArrayList<>();
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
@@ -45,12 +52,16 @@ public class FareRuleDao {
 
     public FareRule findById(int id) throws SQLException {
         String sql = """
-            SELECT f.fare_rule_id, f.route_id, f.seat_class_id, f.base_price, f.effective_from, f.effective_to,
-                   sc.code AS seat_class_code, sc.name AS seat_class_name
-            FROM dbo.FareRule f
-            JOIN dbo.SeatClass sc ON sc.seat_class_id = f.seat_class_id
-            WHERE f.fare_rule_id = ?
-        """;
+        SELECT f.fare_rule_id, f.route_id, f.seat_class_id, f.base_price, f.effective_from, f.effective_to,
+               sc.code AS seat_class_code, sc.name AS seat_class_name,
+               r.code AS route_code, so.name AS origin_name, sd.name AS dest_name
+        FROM dbo.FareRule f
+        JOIN dbo.SeatClass sc ON sc.seat_class_id = f.seat_class_id
+        JOIN dbo.Route r      ON r.route_id = f.route_id
+        JOIN dbo.Station so   ON so.station_id = r.origin_station_id
+        JOIN dbo.Station sd   ON sd.station_id = r.dest_station_id
+        WHERE f.fare_rule_id = ?
+    """;
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
@@ -108,4 +119,34 @@ public class FareRuleDao {
             return ps.executeUpdate();
         }
     }
+
+    public boolean hasOverlappingPeriod(Integer fareRuleId, int routeId, int seatClassId,
+            LocalDate from, LocalDate to) throws SQLException {
+        // (from-to) overlap với (ef, et) khi: ef <= to AND (et IS NULL OR et >= from)
+        String sql = """
+        SELECT 1
+        FROM dbo.FareRule
+        WHERE route_id = ? AND seat_class_id = ?
+          AND (effective_from <= ?)
+          AND (effective_to IS NULL OR effective_to >= ?)
+          AND (? IS NULL OR fare_rule_id <> ?) -- bỏ qua chính nó khi update
+    """;
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, routeId);
+            ps.setInt(2, seatClassId);
+            ps.setDate(3, Date.valueOf(to == null ? LocalDate.of(9999, 12, 31) : to));
+            ps.setDate(4, Date.valueOf(from));
+            if (fareRuleId == null) {
+                ps.setNull(5, Types.INTEGER);
+                ps.setNull(6, Types.INTEGER);
+            } else {
+                ps.setInt(5, Types.INTEGER); // dummy để giữ placeholder
+                ps.setInt(6, fareRuleId);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
 }

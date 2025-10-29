@@ -19,24 +19,64 @@ public class SeatClassService {
     }
 
     public Integer create(String code, String name) throws SQLException {
-        if (code == null || code.isBlank() || name == null || name.isBlank()) {
+        String normCode = normalizeCode(code);
+        String normName = normalizeName(name);
+        if (normCode == null || normName == null) {
             return null;
         }
-        if (dao.codeExists(code)) {
+
+        if (dao.codeExists(normCode)) {
             return null;
         }
-        return dao.create(code.trim(), name.trim());
+        return dao.create(normCode, normName);
     }
 
     public boolean update(SeatClass sc) throws SQLException {
-        SeatClass existed = dao.findByCode(sc.getCode());
-        if (existed != null && !existed.getSeatClassId().equals(sc.getSeatClassId())) {
+        if (sc.getSeatClassId() == null) {
             return false;
         }
+        String normCode = normalizeCode(sc.getCode());
+        String normName = normalizeName(sc.getName());
+        if (normCode == null || normName == null) {
+            return false;
+        }
+
+        SeatClass existed = dao.findByCode(normCode);
+        if (existed != null && !existed.getSeatClassId().equals(sc.getSeatClassId())) {
+            return false; // trùng code ở bản ghi khác
+        }
+        sc.setCode(normCode);
+        sc.setName(normName);
         return dao.update(sc) > 0;
     }
 
     public boolean delete(int id) throws SQLException {
         return dao.delete(id) > 0;
+    }
+
+    // ---- helpers ----
+    private String normalizeCode(String code) {
+        if (code == null) {
+            return null;
+        }
+        String s = code.trim().toUpperCase();
+        if (s.isEmpty() || s.length() > 20) {
+            return null;
+        }
+        if (!s.matches("[A-Z0-9\\-_]+")) {
+            return null; // ví dụ: VIP, STD_A
+        }
+        return s;
+    }
+
+    private String normalizeName(String name) {
+        if (name == null) {
+            return null;
+        }
+        String s = name.trim();
+        if (s.isEmpty() || s.length() > 100) {
+            return null;
+        }
+        return s;
     }
 }

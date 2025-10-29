@@ -17,7 +17,7 @@ import java.sql.*;
 public class UserDao {
     public User findByEmail(String email) throws SQLException {
         String sql = """
-                     SELECT CAST(user_id AS NVARCHAR(36)) AS user_id, email, password, full_name, is_active
+                     SELECT CAST(user_id AS NVARCHAR(36)) AS user_id, email, password_hash, full_name, is_active
                      FROM dbo.Users WHERE email = ?
         """;
         try (Connection c = Db.getConnection();
@@ -28,7 +28,7 @@ public class UserDao {
                 User u = new User();
                 u.setUserId(rs.getString("user_id"));
                 u.setEmail(rs.getString("email"));
-                u.setPassword(rs.getString("password"));
+                u.setPassword(rs.getString("password_hash"));
                 u.setFullName(rs.getString("full_name"));
                 u.setActive(rs.getBoolean("is_active"));
                 return u;
@@ -48,7 +48,7 @@ public class UserDao {
     }
     
     public String create(String email, String hash, String fullName) throws SQLException {
-        String sql = "INSERT INTO dbo.Users(email, password, full_name) VALUES(?,?,?)";
+        String sql = "INSERT INTO dbo.Users(email, password_hash, full_name) VALUES(?,?,?)";
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
                 ps.setString(1, email);

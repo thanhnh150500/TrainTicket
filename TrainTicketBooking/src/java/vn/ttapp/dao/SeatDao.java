@@ -44,6 +44,26 @@ public class SeatDao {
         return list;
     }
 
+    public Seat findByCarriageAndCode(int carriageId, String code) throws SQLException {
+        String sql = """
+        SELECT s.seat_id, s.carriage_id, s.code, s.seat_class_id, s.position_info,
+               sc.code AS seat_class_code, sc.name AS seat_class_name,
+               c.code AS carriage_code, t.code AS train_code, t.name AS train_name
+        FROM dbo.Seat s
+        JOIN dbo.Carriage c ON c.carriage_id = s.carriage_id
+        JOIN dbo.Train t ON t.train_id = c.train_id
+        JOIN dbo.SeatClass sc ON sc.seat_class_id = s.seat_class_id
+        WHERE s.carriage_id = ? AND s.code = ?
+    """;
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, carriageId);
+            ps.setString(2, code);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? map(rs) : null;
+            }
+        }
+    }
+
     public Seat findById(int id) throws SQLException {
         String sql = """
             SELECT s.seat_id, s.carriage_id, s.code, s.seat_class_id, s.position_info,

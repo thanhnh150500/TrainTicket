@@ -160,9 +160,13 @@ public class FareRuleManagerServlet extends HttpServlet {
                     }
                 }
                 case "delete" -> {
-                    int id = Integer.parseInt(req.getParameter("id"));
-                    service.delete(id);
-                    req.getSession().setAttribute("flash_success", "Đã xóa giá tuyến.");
+                    try {
+                        int id = Integer.parseInt(req.getParameter("id"));
+                        service.delete(id);
+                        req.getSession().setAttribute("flash_success", "Đã xóa giá tuyến.");
+                    } catch (NumberFormatException nfe) {
+                        req.getSession().setAttribute("flash_error", "ID không hợp lệ.");
+                    }
                     res.sendRedirect(req.getContextPath() + "/manager/fare-rules");
                 }
                 default ->

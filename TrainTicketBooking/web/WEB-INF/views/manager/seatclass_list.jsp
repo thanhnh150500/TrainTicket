@@ -25,9 +25,10 @@
             <tbody>
                 <c:forEach items="${list}" var="x">
                     <tr>
-                        <td>${x.seatClassId}</td>
-                        <td>${x.code}</td>
-                        <td>${x.name}</td>
+                        <td><c:out value="${x.seatClassId}"/></td>
+                        <td><c:out value="${x.code}"/></td>
+                        <td><c:out value="${x.name}"/></td>
+
                         <td class="d-flex gap-2">
                             <a class="btn btn-sm btn-outline-secondary" href="${pageContext.request.contextPath}/manager/seat-classes?op=edit&id=${x.seatClassId}">Sửa</a>
                             <form method="post" action="${pageContext.request.contextPath}/manager/seat-classes" class="d-inline">
@@ -69,11 +70,11 @@
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
         <script>
-                        [document.getElementById('toast-success'), document.getElementById('toast-error')]
-                                .forEach(el => {
-                                    if (el)
-                                        new bootstrap.Toast(el, {delay: 2500, autohide: true}).show();
-                                });
+                                    [document.getElementById('toast-success'), document.getElementById('toast-error')]
+                                            .forEach(el => {
+                                                if (el)
+                                                    new bootstrap.Toast(el, {delay: 2500, autohide: true}).show();
+                                            });
         </script>
     </body>
 </html>

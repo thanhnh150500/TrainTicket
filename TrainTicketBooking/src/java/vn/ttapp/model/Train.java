@@ -4,14 +4,11 @@
  */
 package vn.ttapp.model;
 
-/**
- *
- * @author dotri
- */
 public class Train {
-    public Integer trainId;
-    public String  code;
-    public String  name;
+
+    private Integer trainId;
+    private String code;
+    private String name;
 
     public Train() {
     }
@@ -45,5 +42,4 @@ public class Train {
     public void setName(String name) {
         this.name = name;
     }
-    
 }

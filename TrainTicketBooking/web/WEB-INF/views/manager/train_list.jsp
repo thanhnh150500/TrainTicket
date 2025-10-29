@@ -32,9 +32,10 @@
             <tbody>
                 <c:forEach items="${list}" var="t">
                     <tr>
-                        <td>${t.trainId}</td>
-                        <td>${t.code}</td>
-                        <td>${t.name}</td>
+                        <td><c:out value="${t.trainId}"/></td>
+                        <td><c:out value="${t.code}"/></td>
+                        <td><c:out value="${t.name}"/></td>
+
                         <td class="d-flex gap-2">
                             <a class="btn btn-sm btn-outline-secondary"
                                href="${pageContext.request.contextPath}/manager/trains?op=edit&id=${t.trainId}">Sửa</a>
@@ -94,19 +95,19 @@
 
         <!-- Khởi chạy toast & auto-hide sau 2.5s -->
         <script>
-                                (function () {
-                                    const shown = [];
-                                    const successEl = document.getElementById('toast-success');
-                                    const errorEl = document.getElementById('toast-error');
+                                            (function () {
+                                                const shown = [];
+                                                const successEl = document.getElementById('toast-success');
+                                                const errorEl = document.getElementById('toast-error');
 
-                                    [successEl, errorEl].forEach(function (el) {
-                                        if (!el)
-                                            return;
-                                        const t = new bootstrap.Toast(el, {delay: 2500, autohide: true});
-                                        t.show();
-                                        shown.push(t);
-                                    });
-                                })();
+                                                [successEl, errorEl].forEach(function (el) {
+                                                    if (!el)
+                                                        return;
+                                                    const t = new bootstrap.Toast(el, {delay: 2500, autohide: true});
+                                                    t.show();
+                                                    shown.push(t);
+                                                });
+                                            })();
         </script>
     </body>
 </html>
