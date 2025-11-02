@@ -1,5 +1,6 @@
 <%@page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@taglib prefix="c" uri="jakarta.tags.core"%>
+
 <%
   String ctx = request.getContextPath();
   String today = java.time.LocalDate.now().toString();
@@ -9,17 +10,14 @@
     <head>
         <meta charset="UTF-8">
         <title>Trang chủ | Đặt vé tàu</title>
-
         <!-- Voyage Theme Core -->
         <link rel="stylesheet" href="<%=ctx%>/assets/bootstrap/css/bootstrap.min.css">
-        <link rel="stylesheet" href="<%=ctx%>/assets/voyage/vendors/fontawesome/all.min.css">
-        <link rel="stylesheet" href="<%=ctx%>/assets/css/theme.css">
 
         <!-- Custom home page overrides -->
-        <link rel="stylesheet" href="<%=ctx%>/static/css/home-body.css">
+        <link rel="stylesheet" href="<%=ctx%>/assets/css/home.css">
     </head>
     <body>
-
+        <%@ include file="/WEB-INF/views/layout/_header.jsp" %>
         <!-- ============ SECTION 1: SEARCH TRIP ============ -->
         <section class="voy-hero py-5 bg-light">
             <div class="container">
@@ -39,7 +37,8 @@
                                 </li>
                             </ul>
 
-                            <form id="tripSearchForm" action="<%=ctx%>/tripsearch" method="post" novalidate>
+                            <form id="tripSearchForm" action="${pageContext.request.contextPath}/tripsearch" method="post" novalidate>
+                                <input type="hidden" name="_csrf" value="${sessionScope.csrfToken}"/>
                                 <input type="hidden" name="tripType" id="tripType" value="ONEWAY">
 
                                 <div class="row g-3">
@@ -181,7 +180,7 @@
 
 
         <!-- ============ JS ============ -->
-        <script src="<%=ctx%>/assets/js/bootstrap.bundle.min.js"></script>
+        <script src="<%=ctx%>/assets/bootstrap/js/bootstrap.bundle.min.js"></script>
         <script src="<%=ctx%>/assets/js/home.js"></script>
 
     </body>

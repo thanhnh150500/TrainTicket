@@ -1,175 +1,212 @@
-/* 
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/JavaScript.js to edit this template
- */
+// assets/js/seatmap.js
 const MAX_SELECT = 4;
 let raw = [];                 // toàn bộ ghế từ API
 let byCar = new Map();        // carriageCode -> seats[]
 let carKeys = [];
 let carIndex = 0;
 let selected = new Set();     // seatId đang chọn
+let holding = false;          // chặn spam nút "Giữ ghế"
 
-function fetchSeatMap() {
-    fetch(`${ctx}/api/seatmap?tripId=${encodeURIComponent(tripId)}&with=availability`)
-            .then(r => r.json())
-            .then(data => {
-                raw = data || [];
-                groupByCarriage();
-                renderMiniCars();
-                openCar(0);
-                // (tuỳ chọn) cập nhật card đầu tàu
-                updateSummary();
-            })
-            .catch(err => console.error(err));
+const $  = (sel)=>document.querySelector(sel);
+const $$ = (sel)=>document.querySelectorAll(sel);
+
+const CSRF = () => ($('meta[name="csrf-token"]')?.content || '').trim();
+
+async function fetchSeatMap() {
+  const url = `${ctx}/api/seatmap?tripId=${encodeURIComponent(tripId)}&with=availability&_=${Date.now()}`;
+  setLoading(true);
+  try {
+    const r = await fetch(url, { credentials: 'same-origin' });
+    if (r.status === 403) {
+      alert('Phiên làm việc đã hết hạn (403). Vui lòng tải lại trang.');
+      return;
+    }
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+
+    raw = Array.isArray(data) ? data : [];
+    groupByCarriage();
+    renderMiniCars();
+    if (carKeys.length > 0) openCar( Math.min(carIndex, carKeys.length - 1) );
+    updateSummary();
+    // nếu API có giờ đi/đến -> cập nhật
+    const any = raw[0];
+    if (any?.departTime) $('#kDepart').textContent = any.departTime;
+    if (any?.arriveTime) $('#kArrive').textContent = any.arriveTime;
+
+  } catch (err) {
+    console.error('fetchSeatMap error:', err);
+    alert('Không tải được sơ đồ ghế.');
+  } finally {
+    setLoading(false);
+  }
+}
+
+function setLoading(on) {
+  $('#btnHold')?.toggleAttribute('disabled', on || holding);
 }
 
 function groupByCarriage() {
-    byCar.clear();
-    for (const s of raw) {
-        const key = s.carriageCode || `#${s.carriageId}`;
-        if (!byCar.has(key))
-            byCar.set(key, []);
-        byCar.get(key).push(s);
-    }
-    // sắp xếp ghế theo seatCode (A1,A2,… hoặc số)
-    for (const arr of byCar.values()) {
-        arr.sort((a, b) => (a.seatCode || a.code).localeCompare((b.seatCode || b.code), 'vi', {numeric: true}));
-    }
-    carKeys = Array.from(byCar.keys());
+  byCar.clear();
+  for (const s of raw) {
+    const key = s.carriageCode || `#${s.carriageId}`;
+    if (!byCar.has(key)) byCar.set(key, []);
+    byCar.get(key).push(s);
+  }
+  for (const arr of byCar.values()) {
+    arr.sort((a, b) => (a.seatCode || a.code).localeCompare((b.seatCode || b.code), 'vi', { numeric: true }));
+  }
+  carKeys = Array.from(byCar.keys());
 }
 
 function renderMiniCars() {
-    const wrap = document.getElementById('carMini');
-    wrap.innerHTML = '';
-    carKeys.forEach((k, i) => {
-        const el = document.createElement('div');
-        el.className = 'car ' + colorByIndex(i) + (i === carIndex ? ' active' : '');
-        el.innerHTML = `<div class="num">${k.replace(/\D+/g, '') || (i + 1)}</div>`;
-        el.onclick = () => openCar(i);
-        wrap.appendChild(el);
-    });
-
-    // pager
-    document.getElementById('btnPrev').onclick = () => openCar(Math.max(0, carIndex - 1));
-    document.getElementById('btnNext').onclick = () => openCar(Math.min(carKeys.length - 1, carIndex + 1));
+  const wrap = $('#carMini');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  if (carKeys.length === 0) {
+    wrap.innerHTML = '<div class="text-muted small">Chưa có toa nào.</div>';
+    $('#coachTitle').textContent = 'Toa số … :'; $('#className').textContent = '—';
+    $('#seatGrid').innerHTML = '';
+    return;
+  }
+  carKeys.forEach((k, i) => {
+    const el = document.createElement('div');
+    el.className = 'car ' + colorByIndex(i) + (i === carIndex ? ' active' : '');
+    el.innerHTML = `<div class="num">${k.replace(/\D+/g, '') || (i + 1)}</div>`;
+    el.onclick = () => openCar(i);
+    wrap.appendChild(el);
+  });
+  $('#btnPrev').onclick = () => openCar(Math.max(0, carIndex - 1));
+  $('#btnNext').onclick = () => openCar(Math.min(carKeys.length - 1, carIndex + 1));
 }
 
 function openCar(i) {
-    carIndex = i;
-    document.querySelectorAll('#carMini .car').forEach((c, idx) => {
-        c.classList.toggle('active', idx === i);
-    });
-    const code = carKeys[i];
-    renderCoach(code);
+  if (carKeys.length === 0) return;
+  carIndex = Math.max(0, Math.min(i, carKeys.length - 1));
+  $$('#carMini .car').forEach((c, idx) => c.classList.toggle('active', idx === carIndex));
+  const code = carKeys[carIndex];
+  renderCoach(code);
 }
 
 function renderCoach(code) {
-    const seats = byCar.get(code) || [];
-    const grid = document.getElementById('seatGrid');
-    grid.innerHTML = '';
+  const seats = byCar.get(code) || [];
+  const grid = $('#seatGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
 
-    // Tiêu đề: Toa số ... + tên hạng ghế (lấy từ phần tử đầu nếu có)
-    const any = seats[0] || {};
-    document.getElementById('coachTitle').textContent = `Toa số ${code} :`;
-    document.getElementById('className').textContent = any.seatClassName || '—';
+  const any = seats[0] || {};
+  $('#coachTitle').textContent = `Toa số ${code} :`;
+  $('#className').textContent  = any.seatClassName || '—';
 
-    // Bố cục 2–aisle–2: cứ 2 ghế trái, 2 ghế phải theo thứ tự
-    // Chèn “aisle” ở cột giữa
-    let col = 0;
-    for (const s of seats) {
-        if (col % 4 === 2) {
-            // chèn khoảng trống lối đi (1 lần mỗi hàng)
-            const aisle = document.createElement('div');
-            aisle.className = 'aisle';
-            grid.appendChild(aisle);
-            col++;
-        }
-
-        const div = document.createElement('div');
-        div.className = 'seat ' + cssState(s);
-        div.textContent = s.seatCode || s.code;
-        div.title = (s.seatClassName || '') + (s.available ? ' • Còn' : ' • Không khả dụng');
-
-        div.onclick = () => {
-            if (!s.available)
-                return;
-            const id = s.seatId;
-            if (selected.has(id)) {
-                selected.delete(id);
-                div.classList.remove('chosen');
-            } else {
-                if (selected.size >= MAX_SELECT)
-                    return;
-                selected.add(id);
-                div.classList.add('chosen');
-            }
-            updateHint();
-        };
-
-        grid.appendChild(div);
-        col++;
-        if (col % 5 === 0)
-            col = 0; // 2 ghế + aisle + 2 ghế = 5 cột
+  // grid 2–aisle–2 (5 cột)
+  let col = 0;
+  for (const s of seats) {
+    if (col % 4 === 2) {
+      const aisle = document.createElement('div');
+      aisle.className = 'aisle';
+      grid.appendChild(aisle);
+      col++;
     }
 
-    updateHint();
+    const div = document.createElement('div');
+    const isChosen = selected.has(s.seatId);
+    div.className = 'seat ' + cssState(s) + (isChosen ? ' chosen' : '');
+    div.textContent = s.seatCode || s.code;
+    div.title = `${s.seatClassName || ''}${s.available ? ' • Còn' : ' • Không khả dụng'}`;
+
+    div.onclick = () => {
+      if (!s.available) return;
+      const id = s.seatId;
+      if (selected.has(id)) {
+        selected.delete(id);
+        div.classList.remove('chosen');
+      } else {
+        if (selected.size >= MAX_SELECT) return;
+        selected.add(id);
+        div.classList.add('chosen');
+      }
+      updateHint();
+    };
+
+    grid.appendChild(div);
+    col++;
+    if (col % 5 === 0) col = 0;
+  }
+  updateHint();
 }
 
 function cssState(s) {
-    // API của bạn có “available”, và có lock/occupied trong CTE.
-    // Ở đây quy ước: available=true -> free, ngược lại nếu lock_expires_at có -> hold, còn lại -> sold
-    if (s.available)
-        return 'free';
-    if (s.lockExpiresAt)
-        return 'hold';
-    return 'sold';
+  if (s.available) return 'free';
+  if (s.lockExpiresAt) return 'hold';
+  return 'sold';
 }
 
 function updateHint() {
-    const el = document.getElementById('hint');
-    el.textContent = `Đang chọn: ${selected.size}/${MAX_SELECT} ghế`;
+  const el = $('#hint');
+  if (el) el.textContent = `Đang chọn: ${selected.size}/${MAX_SELECT} ghế`;
 }
 
-document.getElementById('btnHold').onclick = () => {
-    if (selected.size === 0)
-        return alert('Bạn chưa chọn ghế nào.');
-    const body = {
-        tripId: parseInt(tripId, 10),
-        seatIds: Array.from(selected),
-        ttlMinutes: 15
-    };
-    fetch(`${ctx}/api/seat/hold`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(body)
-    }).then(r => r.json())
-            .then(res => {
-                const fail = res.results.filter(x => x.seatLockId == null).map(x => x.seatId);
-                if (fail.length)
-                    alert('Một số ghế đã bị giữ trước: ' + fail.join(', '));
-                else
-                    alert('Giữ ghế thành công. Hết hạn: ' + new Date(res.expiresAtUtc).toLocaleTimeString());
-                selected.clear();
-                fetchSeatMap(); // refresh trạng thái
-            })
-            .catch(e => alert('Lỗi giữ ghế'));
-};
+$('#btnHold')?.addEventListener('click', async () => {
+  if (selected.size === 0) return alert('Bạn chưa chọn ghế nào.');
+
+  const csrf = CSRF();
+  if (!csrf) return alert('Thiếu CSRF token. Vui lòng tải lại trang.');
+
+  const body = {
+    tripId: parseInt(tripId, 10),
+    seatIds: Array.from(selected)
+  };
+
+  try {
+    holding = true;
+    setLoading(true);
+
+    const r = await fetch(`${ctx}/api/hold`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrf
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify(body)
+    });
+
+    if (r.status === 403) {
+      alert('Phiên làm việc đã hết hạn hoặc token không hợp lệ (403). Vui lòng tải lại trang.');
+      return;
+    }
+    if (!r.ok) throw new Error(`HTTP ${r.status}: ${await r.text()}`);
+
+    const res = await r.json();
+    if (!res.ok) {
+      alert(res.error || 'Giữ ghế thất bại');
+      return;
+    }
+    alert('Giữ ghế thành công!');
+    selected.clear();
+    await fetchSeatMap(); // refresh trạng thái
+
+  } catch (e) {
+    console.error('Hold error', e);
+    alert('Giữ ghế thất bại.');
+  } finally {
+    holding = false;
+    setLoading(false);
+  }
+});
 
 function updateSummary() {
-    // Nếu bạn có API khác trả giờ đi/đến, số chỗ,… hãy set ở đây.
-    // Tạm tính từ dữ liệu ghế:
-    const free = raw.filter(s => s.available).length;
-    const total = raw.length;
-    const booked = total - free;
-    document.getElementById('kFree').textContent = free;
-    document.getElementById('kBooked').textContent = booked;
+  const free = raw.filter(s => s.available).length;
+  const total = raw.length;
+  const booked = total - free;
+  $('#kFree').textContent = free;
+  $('#kBooked').textContent = booked;
 }
 
 function colorByIndex(i) {
-    const arr = ['blue', 'green', 'orange', 'blue', 'green', 'orange'];
-    return arr[i % arr.length];
+  const arr = ['blue', 'green', 'orange', 'blue', 'green', 'orange'];
+  return arr[i % arr.length];
 }
 
+// Khởi động
 fetchSeatMap();
-
-

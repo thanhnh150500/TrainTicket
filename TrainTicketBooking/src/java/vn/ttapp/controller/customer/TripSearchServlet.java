@@ -4,11 +4,11 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 import java.io.IOException;
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.*;
 import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.Optional;
+import java.util.List;
 
 import vn.ttapp.dao.SearchContext;
 import vn.ttapp.dao.StationDao;
@@ -16,11 +16,17 @@ import vn.ttapp.model.Trip;
 import vn.ttapp.service.TripService;
 import vn.ttapp.service.TripService.SearchResult;
 
+// cho list page
+import vn.ttapp.dao.TripListDao;
+import vn.ttapp.model.TripCardVm;
+import vn.ttapp.model.DayTabVm;
+
 @WebServlet(name = "TripSearchServlet", urlPatterns = {"/tripsearch"})
 public class TripSearchServlet extends HttpServlet {
 
     private final TripService tripService = new TripService();
     private final StationDao stationDao = new StationDao();
+    private final TripListDao tripListDao = new TripListDao();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -31,16 +37,17 @@ public class TripSearchServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        //test
+        boolean debug = "1".equals(request.getParameter("debug"));
 
         final String originName = trimOrNull(request.getParameter("originStation"));
         final String destName = trimOrNull(request.getParameter("destStation"));
-        final String typeRaw = trimOrNull(request.getParameter("tripType"));   // ONEWAY | ROUNDTRIP
-        final String departRaw = trimOrNull(request.getParameter("departDate")); // yyyy-MM-dd
-        final String returnRaw = trimOrNull(request.getParameter("returnDate")); // yyyy-MM-dd (optional)
-        final String timeRaw = trimOrNull(request.getParameter("departTime")); // HH:mm (optional)
+        final String typeRaw = trimOrNull(request.getParameter("tripType"));
+        final String departRaw = trimOrNull(request.getParameter("departDate"));
+        final String returnRaw = trimOrNull(request.getParameter("returnDate"));
+        final String timeRaw = trimOrNull(request.getParameter("departTime"));
         final String tripType = (typeRaw == null || typeRaw.isBlank()) ? "ONEWAY" : typeRaw;
 
-        // helper để set thông tin nhập lại khi có lỗi
         HttpSession ss = request.getSession(true);
         ss.setAttribute("lastOrigin", originName);
         ss.setAttribute("lastDest", destName);
@@ -49,7 +56,7 @@ public class TripSearchServlet extends HttpServlet {
         ss.setAttribute("lastReturn", returnRaw);
 
         try {
-            // 1) Validate cơ bản
+            // 1) Validate
             if (originName == null || destName == null || departRaw == null) {
                 backWithError(request, response, "Vui lòng nhập ga đi, ga đến và ngày đi.");
                 return;
@@ -59,7 +66,7 @@ public class TripSearchServlet extends HttpServlet {
                 return;
             }
 
-            // 2) Resolve StationId (khớp chính xác theo tên ga)
+            // 2) Resolve Station IDs
             Integer originId = stationDao.findIdByNameExact(originName);
             Integer destId = stationDao.findIdByNameExact(destName);
             if (originId == null || destId == null) {
@@ -67,12 +74,13 @@ public class TripSearchServlet extends HttpServlet {
                 return;
             }
 
-            // 3) Parse ngày/giờ
+            // 3) Parse date/time
             LocalDate departDate;
             LocalDate returnDate = null;
             LocalTime departTime = null;
+
             try {
-                departDate = LocalDate.parse(departRaw); // yyyy-MM-dd
+                departDate = LocalDate.parse(departRaw);
             } catch (DateTimeParseException ex) {
                 backWithError(request, response, "Ngày đi không hợp lệ (yyyy-MM-dd).");
                 return;
@@ -93,28 +101,21 @@ public class TripSearchServlet extends HttpServlet {
                     backWithError(request, response, "Ngày về phải sau hoặc bằng ngày đi.");
                     return;
                 }
-            } else {
-                // ONEWAY bỏ qua ngày về nếu có
-                returnDate = null;
             }
 
             if (timeRaw != null && !timeRaw.isBlank()) {
                 try {
-                    departTime = LocalTime.parse(timeRaw); // HH:mm
+                    departTime = LocalTime.parse(timeRaw);
                 } catch (DateTimeParseException ex) {
                     backWithError(request, response, "Giờ đi không hợp lệ (HH:mm).");
                     return;
                 }
             }
 
-            // 4) Tìm chuyến
+            // 4) Kiểm tra có chuyến hay không
             SearchResult sr = tripService.searchTripsByStationIds(
-                    tripType, originId, destId,
-                    departDate, departTime,
-                    returnDate, null // returnTime: chưa dùng
-            );
+                    tripType, originId, destId, departDate, departTime, returnDate, null);
 
-            // 5) Chọn chuyến sớm nhất (OUTBOUND)
             Optional<Trip> chosenOutbound = (sr.outbound == null || sr.outbound.isEmpty())
                     ? Optional.empty()
                     : sr.outbound.stream().min(Comparator.comparing(Trip::getDepartAt));
@@ -123,13 +124,12 @@ public class TripSearchServlet extends HttpServlet {
                 return;
             }
 
-            // 6) Nếu khứ hồi → chọn sớm nhất chiều về (nếu có)
             Optional<Trip> chosenInbound = Optional.empty();
             if ("ROUNDTRIP".equalsIgnoreCase(tripType) && sr.inbound != null && !sr.inbound.isEmpty()) {
                 chosenInbound = sr.inbound.stream().min(Comparator.comparing(Trip::getDepartAt));
             }
 
-            // 7) Lưu SearchContext
+            // 5) Lưu ngữ cảnh tìm kiếm
             SearchContext ctx = new SearchContext();
             ctx.setTripType(tripType);
             ctx.setOriginStationId(originId);
@@ -144,9 +144,24 @@ public class TripSearchServlet extends HttpServlet {
             ss.setAttribute("chosenOutboundTripId", chosenOutbound.get().getTripId());
             ss.setAttribute("chosenInboundTripId", chosenInbound.map(Trip::getTripId).orElse(null));
 
-            // 8) Redirect sang seatmap chiều đi
-            response.sendRedirect(request.getContextPath() + "/seatmap?tripId="
-                    + chosenOutbound.get().getTripId() + "&segment=OUTBOUND");
+            // 6) Lấy danh sách chuyến cho ngày đang xem và forward sang /trips
+            LocalDate viewDate = departDate;
+            List<TripCardVm> trips = tripListDao.queryTripsForDate(originId, destId, viewDate);
+            List<DayTabVm> days = tripListDao.buildDayTabs(request, viewDate, originId, destId);
+
+            request.setAttribute("routeTitle", originName + " → " + destName);
+            request.setAttribute("searchDate", viewDate);
+            request.setAttribute("days", days);
+            request.setAttribute("trips", trips);
+
+            request.setAttribute("prevDateUrl",
+                    request.getContextPath() + "/trips?originId=" + originId
+                    + "&destId=" + destId + "&date=" + viewDate.minusDays(1));
+            request.setAttribute("nextDateUrl",
+                    request.getContextPath() + "/trips?originId=" + originId
+                    + "&destId=" + destId + "&date=" + viewDate.plusDays(1));
+
+            request.getRequestDispatcher("/WEB-INF/views/customer/triplist.jsp").forward(request, response);
 
         } catch (Exception ex) {
             ex.printStackTrace();

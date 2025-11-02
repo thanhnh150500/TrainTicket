@@ -2,13 +2,13 @@
 (function () {
     const $$ = (sel) => document.querySelector(sel);
 
-    const tripTypeInput = $$('#tripType');          // hidden input (ONEWAY | ROUNDTRIP)
-    const tabOneway = $$('#tab-oneway');        // nút tab Một chiều (button)
-    const tabRound = $$('#tab-round');         // nút tab Khứ hồi (button)
-    const departInput = $$('#departDate');        // input[type=date] ngày đi
-    const returnInput = $$('#returnDate');        // input[type=date] ngày về
-    const clearBtn = $$('#clearReturnBtn');    // nút xóa ngày về (✕)
-    const swapBtn = $$('#swapBtn');           // (nếu có) nút đổi ga đi/đến
+    const tripTypeInput = $$('#tripType');          // <input type="hidden" id="tripType" name="tripType">
+    const tabOneway = $$('#tab-oneway');            // nút "Một chiều"
+    const tabRound = $$('#tab-round');             // nút "Khứ hồi"
+    const departInput = $$('#departDate');
+    const returnInput = $$('#returnDate');
+    const clearBtn = $$('#clearReturnBtn');
+    const swapBtn = $$('#swapBtn');
     const originInput = $$('#originStation');
     const destInput = $$('#destStation');
 
@@ -16,9 +16,7 @@
         tripTypeInput.value = isRound ? 'ROUNDTRIP' : 'ONEWAY';
 
         if (isRound) {
-            // mở ngày về
             returnInput.removeAttribute('disabled');
-            // ràng buộc min = ngày đi
             if (departInput && departInput.value) {
                 returnInput.min = departInput.value;
                 if (!returnInput.value || returnInput.value < departInput.value) {
@@ -26,7 +24,6 @@
                 }
             }
         } else {
-            // khóa ngày về
             returnInput.value = '';
             returnInput.setAttribute('disabled', 'disabled');
             returnInput.removeAttribute('min');
@@ -62,26 +59,19 @@
         destInput.value = a;
     }
 
-    // ── Gắn sự kiện Bootstrap tab: dùng event 'shown.bs.tab'
-    if (tabOneway) {
-        tabOneway.addEventListener('shown.bs.tab', () => setRound(false));
-    }
-    if (tabRound) {
-        tabRound.addEventListener('shown.bs.tab', () => setRound(true));
-    }
+    // Nếu bạn có dùng Bootstrap Tab đúng chuẩn:
+    tabOneway?.addEventListener('shown.bs.tab', () => setRound(false));
+    tabRound?.addEventListener('shown.bs.tab', () => setRound(true));
 
-    // Ngày đi thay đổi ⇒ cập nhật min của ngày về (nếu khứ hồi)
-    if (departInput)
-        departInput.addEventListener('change', onDepartChange);
+    // Fallback: luôn bắt click để chắc chắn
+    tabOneway?.addEventListener('click', () => setRound(false));
+    tabRound?.addEventListener('click', () => setRound(true));
 
-    // Nút xóa ngày về
-    if (clearBtn)
-        clearBtn.addEventListener('click', onClearReturn);
+    departInput?.addEventListener('change', onDepartChange);
+    clearBtn?.addEventListener('click', onClearReturn);
+    swapBtn?.addEventListener('click', onSwap);
 
-    // Nút đổi chiều ga (nếu có trong DOM)
-    if (swapBtn)
-        swapBtn.addEventListener('click', onSwap);
-
-    // Khởi tạo mặc định: Một chiều
-    setRound(false);
+    // Khởi tạo theo tab đang active thay vì mặc định ONEWAY
+    const roundActive = tabRound?.classList.contains('active');
+    setRound(!!roundActive);
 })();

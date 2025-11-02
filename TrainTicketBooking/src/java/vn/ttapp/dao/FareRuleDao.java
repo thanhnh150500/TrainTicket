@@ -108,4 +108,45 @@ public class FareRuleDao {
             return ps.executeUpdate();
         }
     }
+
+    // Tìm rule đang hiệu lực cho route + seatClass + ngày đi
+    public FareRule findActiveRule(int routeId, int seatClassId, LocalDate travelDate) throws SQLException {
+        String sql = """
+        SELECT TOP (1)
+               f.fare_rule_id, f.route_id, f.seat_class_id, f.base_price, f.effective_from, f.effective_to,
+               sc.code AS seat_class_code, sc.name AS seat_class_name
+        FROM dbo.FareRule f
+        JOIN dbo.SeatClass sc ON sc.seat_class_id = f.seat_class_id
+        WHERE f.route_id = ?
+          AND f.seat_class_id = ?
+          AND f.effective_from <= ?
+          AND (f.effective_to IS NULL OR f.effective_to >= ?)
+        ORDER BY f.effective_from DESC, f.fare_rule_id DESC
+    """;
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            Date d = Date.valueOf(travelDate);
+            ps.setInt(1, routeId);
+            ps.setInt(2, seatClassId);
+            ps.setDate(3, d);
+            ps.setDate(4, d);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? map(rs) : null;
+            }
+        }
+    }
+
+    /**
+     * Trả về giá đang hiệu lực; nếu không có rule thì ném SQLException (hoặc
+     * bạn có thể trả BigDecimal.ZERO).
+     */
+    public BigDecimal getPrice(int routeId, int seatClassId, LocalDate travelDate) throws SQLException {
+        FareRule rule = findActiveRule(routeId, seatClassId, travelDate);
+        if (rule == null) {
+            throw new SQLException("No active fare rule for route=" + routeId
+                    + ", seatClass=" + seatClassId + ", date=" + travelDate);
+            // hoặc: return BigDecimal.ZERO;
+        }
+        return rule.getBasePrice();
+    }
+
 }

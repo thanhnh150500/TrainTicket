@@ -140,10 +140,10 @@ public class StationDao {
             SELECT s.station_id, s.city_id, s.code, s.name, s.address, c.name AS city_name
             FROM dbo.Station s
             JOIN dbo.City c ON c.city_id = s.city_id
-            WHERE s.name COLLATE Vietnamese_CI_AI = ?
+            WHERE s.name COLLATE SQL_Latin1_General_CP1_CI_AI = ?
         """;
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setNString(1, name);
+            ps.setNString(1, name); // N-string cho Unicode
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? map(rs) : null;
             }
@@ -154,20 +154,55 @@ public class StationDao {
      * Gợi ý theo tên/ mã ga
      */
     public List<Station> suggestByNameOrCode(String q, int limit) throws SQLException {
+        // chuẩn bị các pattern
+        String start = q + "%";
+        String word = "% " + q + "%";
+        String any = "%" + q + "%";
+
+        // ƯU TIÊN: bắt đầu bằng q (tên ga / tỉnh) > khớp đầu từ > mã ga > chứa bất kỳ
+        // Dùng collation Vietnamese_100_CI_AI để Đ ≠ D nhưng vẫn bỏ dấu (AI)
+        // Nếu SQL Server của bạn không hỗ trợ collation này, xem ghi chú bên dưới.
         String sql = """
-            SELECT TOP (?) s.station_id, s.city_id, s.code, s.name, s.address, c.name AS city_name
-            FROM dbo.Station s
-            JOIN dbo.City c ON c.city_id = s.city_id
-            WHERE s.name  COLLATE Vietnamese_CI_AI LIKE ?
-               OR s.code  COLLATE Vietnamese_CI_AI LIKE ?
-            ORDER BY s.name
-        """;
+        SELECT TOP (?)
+               s.station_id, s.city_id, s.code, s.name, s.address, c.name AS city_name,
+               /* score để ORDER BY */
+               CASE
+                   WHEN s.name COLLATE Vietnamese_100_CI_AI LIKE ? THEN 0
+                   WHEN c.name COLLATE Vietnamese_100_CI_AI LIKE ? THEN 1
+                   WHEN s.name COLLATE Vietnamese_100_CI_AI LIKE ? THEN 2
+                   WHEN c.name COLLATE Vietnamese_100_CI_AI LIKE ? THEN 3
+                   WHEN s.code COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? THEN 4
+                   WHEN s.name COLLATE Vietnamese_100_CI_AI LIKE ? THEN 5
+                   WHEN c.name COLLATE Vietnamese_100_CI_AI LIKE ? THEN 6
+                   ELSE 9
+               END AS score
+        FROM dbo.Station s
+        JOIN dbo.City c ON c.city_id = s.city_id
+        WHERE
+             s.name COLLATE Vietnamese_100_CI_AI LIKE ?
+          OR c.name COLLATE Vietnamese_100_CI_AI LIKE ?
+          OR s.code COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?
+        ORDER BY score, c.name, s.name
+    """;
+
         List<Station> out = new ArrayList<>();
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, Math.max(1, limit));
-            String p = "%" + q + "%";
-            ps.setNString(2, p);
-            ps.setNString(3, p);
+
+            // order score params
+            ps.setNString(2, start); // s.name starts with q
+            ps.setNString(3, start); // c.name starts with q
+            ps.setNString(4, word);  // s.name word-boundary
+            ps.setNString(5, word);  // c.name word-boundary
+            ps.setString(6, start); // code starts with q (ASCII)
+            ps.setNString(7, any);   // s.name contains
+            ps.setNString(8, any);   // c.name contains
+
+            // where params (repeat)
+            ps.setNString(9, any);  // s.name
+            ps.setNString(10, any);  // c.name
+            ps.setString(11, any);  // code
+
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     out.add(map(rs));
@@ -219,7 +254,11 @@ public class StationDao {
     }
 
     public Integer findIdByNameExact(String name) throws SQLException {
-        String sql = "SELECT station_id FROM dbo.Station WHERE name COLLATE Vietnamese_CI_AI = ?";
+        String sql = """
+            SELECT station_id
+            FROM dbo.Station
+            WHERE name COLLATE SQL_Latin1_General_CP1_CI_AI = ?
+        """;
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setNString(1, name);
             try (ResultSet rs = ps.executeQuery()) {
@@ -227,6 +266,19 @@ public class StationDao {
             }
         }
     }
+    
+    public String findNameById(int id) throws SQLException {
+    String sql = "SELECT name FROM dbo.Station WHERE station_id = ?";
+    try (Connection c = Db.getConnection();
+         PreparedStatement ps = c.prepareStatement(sql)) {
+        ps.setInt(1, id);
+        try (ResultSet rs = ps.executeQuery()) {
+            // name là NVARCHAR → dùng getNString để đảm bảo unicode
+            return rs.next() ? rs.getNString(1) : null;
+        }
+    }
+}
+
 
     public Integer findIdByCode(String code) throws SQLException {
         String sql = "SELECT station_id FROM dbo.Station WHERE code = ?";

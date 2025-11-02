@@ -125,56 +125,60 @@ public class TripDao {
             return ps.executeUpdate();
         }
     }
-    
+
     public List<Trip> searchByStationId(
-        int originStationId, int destStationId,
-        Date departDate, Time departTimeOrNull
-        ) throws SQLException {
+            int originStationId, int destStationId,
+            Date departDate, Time departTimeOrNull
+    ) throws SQLException {
+        if (departDate == null) {
+            throw new IllegalArgumentException("departDate must not be null");
+        }
+
         String sql = """
-            SELECT t.trip_id, t.route_id, t.train_id, t.depart_at, t.arrive_at, t.status,
-                   r.code AS route_code,
-                   s1.name AS origin_name,
-                   s2.name AS dest_name,
-                   tr.code AS train_code,
-                   tr.name AS train_name
-            FROM dbo.Trip t
-            JOIN dbo.Route r  ON r.route_id = t.route_id
-            JOIN dbo.Station s1 ON s1.station_id = r.origin_station_id
-            JOIN dbo.Station s2 ON s2.station_id = r.dest_station_id
-            JOIN dbo.Train tr ON tr.train_id = t.train_id
-            WHERE r.origin_station_id = ?
-              AND r.dest_station_id   = ?
-              AND t.status = 'SCHEDULED'
-              AND t.depart_at >= ?          -- start of day or given time
-              AND t.depart_at <  ?          -- next day
-            ORDER BY t.depart_at ASC, t.trip_id ASC
-        """;
+        SELECT t.trip_id, t.route_id, t.train_id, t.depart_at, t.arrive_at, t.[status],
+               r.code AS route_code,
+               s1.name AS origin_name,
+               s2.name AS dest_name,
+               tr.code AS train_code,
+               tr.name AS train_name
+        FROM dbo.Trip t
+        JOIN dbo.Route r  ON r.route_id = t.route_id
+        JOIN dbo.Station s1 ON s1.station_id = r.origin_station_id
+        JOIN dbo.Station s2 ON s2.station_id = r.dest_station_id
+        JOIN dbo.Train tr ON tr.train_id = t.train_id
+        WHERE r.origin_station_id = ?
+          AND r.dest_station_id   = ?
+          AND t.[status] = 'SCHEDULED'
+          AND t.depart_at >= ?
+          AND t.depart_at <  ?
+        ORDER BY t.depart_at ASC, t.trip_id ASC
+    """;
 
         List<Trip> list = new ArrayList<>();
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-            // start = departDate at 00:00 (or departTime if provided)
             LocalDateTime start = departDate.toLocalDate().atStartOfDay();
             if (departTimeOrNull != null) {
-                start = start.withHour(departTimeOrNull.toLocalTime().getHour())
-                             .withMinute(departTimeOrNull.toLocalTime().getMinute())
-                             .withSecond(0).withNano(0);
+                var lt = departTimeOrNull.toLocalTime();
+                start = start.withHour(lt.getHour()).withMinute(lt.getMinute()).withSecond(0).withNano(0);
             }
             LocalDateTime end = departDate.toLocalDate().plusDays(1).atStartOfDay();
 
             ps.setInt(1, originStationId);
             ps.setInt(2, destStationId);
-            ps.setTimestamp(3, Timestamp.valueOf(start)); // DATETIME2 ok
+            ps.setTimestamp(3, Timestamp.valueOf(start));
             ps.setTimestamp(4, Timestamp.valueOf(end));
+
             try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) list.add(mapWithJoins(rs));
+                while (rs.next()) {
+                    list.add(mapWithJoins(rs));
+                }
             }
         }
         return list;
     }
 
-    
     public List<Trip> searchReturnByStationIds(int originStationId, int destStationId,
-                                           Date returnDate, Time returnTimeOrNull) throws SQLException {
+            Date returnDate, Time returnTimeOrNull) throws SQLException {
         return searchByStationId(destStationId, originStationId, returnDate, returnTimeOrNull);
     }
 }

@@ -7,9 +7,10 @@
 <html lang="vi">
     <head>
         <meta charset="UTF-8">
+        <meta name="csrf-token" content="${sessionScope.csrfToken}">
         <title>Chọn ghế</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-        <link href="${ctx}/static/css/seatmap-page.css" rel="stylesheet">
+        <link href="${ctx}/assets/css/seatmap.css" rel="stylesheet">
     </head>
     <body class="bg-white">
 
@@ -104,9 +105,10 @@
         </div>
 
         <script>
-    const ctx = "${ctx}";
-    const tripId = "${param.tripId}";
+            const ctx = "${ctx}";
+            const tripId = "${param.tripId}";
         </script>
-        <script src="${ctx}/static/js/seatmap-page.js"></script>
+        <script src="${ctx}/assets/js/seatmap.js"></script>
+        <script>console.log('csrf=', '${sessionScope.csrfToken}');</script>
     </body>
 </html>
