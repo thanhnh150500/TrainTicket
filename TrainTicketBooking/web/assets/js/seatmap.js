@@ -1,8 +1,8 @@
-// assets/js/seatmap.js — BẢN CHUẨN (dựng toa từ payload.coaches + fix layout)
+// assets/js/seatmap.js — API-match (Servlet SeatMapApiServlet) + price + center layout
 const MAX_SELECT = 4;
-let raw = [];
-let seatsByCarId = new Map();
-let cars = [];
+let raw = [];                 // toàn bộ seat (mọi toa) từ API
+let seatsByCarId = new Map(); // group theo carriageId
+let cars = [];                // [{id, no, name, sort}]
 let carIndex = 0;
 let selected = new Set();
 let busy = false;
@@ -11,63 +11,7 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
 const CSRF = () => ($('meta[name="csrf-token"]')?.content || '').trim();
 
-/* ---------- helpers ---------- */
-function coerceBool(v) {
-    if (typeof v === 'boolean')
-        return v;
-    if (typeof v === 'number')
-        return v === 1;
-    if (typeof v === 'string') {
-        const t = v.trim().toLowerCase();
-        if (['true', '1', 'yes'].includes(t))
-            return true;
-        if (['false', '0', 'no'].includes(t))
-            return false;
-    }
-    return null;
-}
-function statusToAvailable(st) {
-    if (st == null)
-        return null;
-    const s = String(st).toUpperCase();
-    if (s === 'FREE' || s === 'AVAILABLE')
-        return true;
-    if (['SOLD', 'BOOKED', 'LOCKED', 'HOLD', 'HELD'].includes(s))
-        return false;
-    return null;
-}
-function makeSeatId(carriageId, seatCode) {
-    const cid = Number.isFinite(carriageId) ? carriageId : 0;
-    const sc = String(seatCode ?? '').padStart(3, '0').slice(-3);
-    return Number(`${cid}${sc}`);
-}
-function numberFromCode(code) {
-    const m = String(code ?? '').match(/\d+/);
-    return m ? Number(m[0]) : NaN;
-}
-function ensureCarriageId(seat, coachNo) {
-    let id = Number(seat?.carriageId);
-    if (!Number.isFinite(id) && Number.isFinite(coachNo))
-        id = coachNo;
-    if (!Number.isFinite(id)) {
-        const n = numberFromCode(seat?.carriageCode);
-        if (Number.isFinite(n))
-            id = n;
-    }
-    return id;
-}
-function uniqBySeatId(list) {
-    const seen = new Set();
-    const out = [];
-    for (const s of list) {
-        const id = Number(s.seatId);
-        if (!seen.has(id)) {
-            seen.add(id);
-            out.push(s);
-        }
-    }
-    return out;
-}
+/* ================= helpers ================= */
 function naturalCompare(a, b) {
     const rx = /(\d+)|(\D+)/g;
     const A = String(a ?? '').match(rx) || [];
@@ -79,7 +23,7 @@ function naturalCompare(a, b) {
             continue;
         const na = /^\d+$/.test(xa), nb = /^\d+$/.test(xb);
         if (na && nb) {
-            const da = parseInt(xa, 10), db = parseInt(xb, 10);
+            const da = +xa, db = +xb;
             if (da !== db)
                 return da - db;
         } else {
@@ -90,340 +34,151 @@ function naturalCompare(a, b) {
     }
     return A.length - B.length;
 }
-
-/* ---------- normalize ---------- */
-function normalizeSeat(s, forcedCarriageId = null) {
-    let carriageId = Number(forcedCarriageId ?? s.carriageId ?? s.carriage_id ?? s.carId ?? s.carriageID);
-    const carriageCode = s.carriageCode ?? s.carriage_code ?? s.car_code ?? '';
-    if (!Number.isFinite(carriageId)) {
-        const n = numberFromCode(carriageCode);
-        if (Number.isFinite(n))
-            carriageId = n;
+function toBoolFromStatus(st) {
+    if (st == null)
+        return null;
+    const s = String(st).toUpperCase();
+    if (s === 'FREE' || s === 'AVAILABLE')
+        return true;
+    if (['SOLD', 'BOOKED', 'LOCKED', 'HOLD', 'HELD'].includes(s))
+        return false;
+    return null;
+}
+function formatVND(n) {
+    try {
+        return Number(n).toLocaleString('vi-VN') + ' đ';
+    } catch {
+        return n;
     }
+}
 
-    const seatCode = s.seatCode ?? s.seat_code ?? s.code ?? '';
-    const seatId = Number(s.seatId ?? s.seat_id ?? s.id ?? makeSeatId(carriageId, seatCode));
-    const seatClassId = Number(s.seatClassId ?? s.seat_class_id);
-    const seatClassCode = s.seatClassCode ?? s.seat_class_code ?? '';
-    const seatClassName = s.seatClassName ?? s.seat_class_name ?? '';
-
-    let row = Number(s.row ?? s.rowNo ?? s.row_no ?? s.r);
-    let col = Number(s.col ?? s.colNo ?? s.col_no ?? s.c);
-    row = Number.isFinite(row) ? row : null;
-    col = Number.isFinite(col) ? col : null;
-
-    let price = s.price ?? s.base_price ?? s.amount ?? 0;
-    price = Number(price);
-
-    const lockExpiresAt = s.lockExpiresAt ?? s.lock_expires_at ?? s.expires_at ?? null;
-
-    let available = coerceBool(s.available);
-    if (available == null)
-        available = statusToAvailable(s.status);
-    if (available == null)
-        available = !lockExpiresAt;
+/* =============== normalize từ SeatDto của API =============== */
+/*
+ API SeatDto:
+ {
+ id, code, row, col, price, status, holdExpiresAt,
+ carriageId, carriageCode, seatClassId, seatClassCode, seatClassName
+ }
+ */
+function normalizeSeat(s) {
+    const seatId = Number(s.id ?? s.seatId ?? s.seat_id);
+    const seatCode = String(s.code ?? s.seatCode ?? '').trim();
+    const carriageId = Number(s.carriageId ?? s.carriage_id);
+    const carriageCode = String(s.carriageCode ?? s.carriage_code ?? '').trim();
+    const seatClassId = (s.seatClassId == null ? 0 : Number(s.seatClassId));
+    const seatClassCode = s.seatClassCode ?? '';
+    const seatClassName = s.seatClassName ?? '';
+    const row = Number.isFinite(+s.row) ? +s.row : null;
+    const col = Number.isFinite(+s.col) ? +s.col : null;
+    const price = Number.isFinite(+s.price) ? +s.price : null;
+    const available = toBoolFromStatus(s.status);
+    const lockExpiresAt = s.holdExpiresAt ?? null;
 
     return {
-        seatId, carriageId, seatCode, carriageCode,
+        seatId, seatCode, carriageId, carriageCode,
         seatClassId, seatClassCode, seatClassName,
-        row, col, price, available, lockExpiresAt,
-        departTime: s.departTime ?? s.depart_time ?? null,
-        arriveTime: s.arriveTime ?? s.arrive_time ?? null
+        row, col, price, available, lockExpiresAt
     };
 }
 
-/* ---------- extractors ---------- */
-function extractFlatSeats(p) {
-    if (Array.isArray(p))
-        return p;
-    const c = [p?.data?.seats, p?.result?.seats, p?.seats, p?.items, p?.data];
-    for (const a of c)
-        if (Array.isArray(a))
-            return a;
-    return null;
-}
-function extractGroupedSeats(p) {
-    const m = [p?.seatsByCarriage, p?.byCarriage, p?.carSeats, p?.seats_grouped, p?.seats_map];
-    for (const mp of m) {
-        if (mp && typeof mp === 'object') {
-            const out = [];
-            for (const k of Object.keys(mp)) {
-                const list = mp[k];
-                if (!Array.isArray(list))
-                    continue;
-                const cid = Number(k);
-                for (const s of list)
-                    out.push(normalizeSeat(s, Number.isFinite(cid) ? cid : null));
-            }
-            return out;
-        }
-    }
-    return null;
-}
-
-/* ---------- DOM fallback ---------- */
-function readSeatsFromDOM() {
-    const btns = $$('#seatGrid .seat');
-    const out = [];
-    btns.forEach((b, i) => {
-        const cid = Number(b.dataset.carriageId);
-        const code = b.dataset.seatCode ?? b.textContent?.trim() ?? String(i + 1);
-        const sid = Number(b.dataset.seatId) || makeSeatId(cid, code);
-        const available = !/sold/.test(b.className) && !/hold/.test(b.className) && !b.disabled;
-        out.push({
-            seatId: sid,
-            carriageId: ensureCarriageId({carriageId: cid, carriageCode: b.dataset.carriageCode}, undefined),
-            seatCode: code,
-            carriageCode: b.dataset.carriageCode ?? '',
-            seatClassId: Number(b.dataset.seatClassId ?? 0),
-            seatClassCode: b.dataset.seatClassCode ?? '',
-            seatClassName: b.dataset.seatClassName ?? '',
-            row: Number.isFinite(Number(b.dataset.row)) ? Number(b.dataset.row) : null,
-            col: Number.isFinite(Number(b.dataset.col)) ? Number(b.dataset.col) : null,
-            price: Number(b.dataset.price ?? 0),
-            available, lockExpiresAt: null, departTime: null, arriveTime: null
-        });
-    });
-    return out;
-}
-
-/* ---------- fetch per coach ---------- */
-function getCoachNosFromDOM() {
-    const nos = [];
-    $$('#carMini .mini-car').forEach(b => {
-        const no = Number(b.dataset.sort ?? b.textContent?.replace(/\D+/g, '') ?? NaN);
-        if (Number.isFinite(no))
-            nos.push(no);
-    });
-    return [...new Set(nos)].sort((a, b) => a - b).slice(0, 20);
-}
-async function fetchSeatsPerCoach(tripId, coachNos) {
-    const base = `${ctx}/api/seatmap`;
-    const tasks = coachNos.map(async (no, idx) => {
-        const url = `${base}?tripId=${encodeURIComponent(tripId)}&coachNo=${encodeURIComponent(no)}&_=${Date.now() + idx}`;
-        const r = await fetch(url, {credentials: 'same-origin', headers: {Accept: 'application/json'}});
-        if (!r.ok)
-            return [];
-        const payload = await r.json();
-        let seats = extractFlatSeats(payload);
-        if (seats)
-            seats = seats.map(normalizeSeat);
-        if (!seats || !seats.length)
-            seats = extractGroupedSeats(payload) || [];
-        return seats.map(s => {
-            const n = normalizeSeat(s, no);
-            n.carriageId = ensureCarriageId(n, no);
-            return n;
-        });
-    });
-    return (await Promise.all(tasks)).flat().filter(s => Number.isFinite(s.carriageId));
-}
-
-/* ---------- giá fallback ---------- */
-function buildPriceByClass(seats) {
-    const m = new Map();
-    for (const s of seats) {
-        const p = Number(s.price);
-        if (Number.isFinite(p) && p > 0 && Number.isFinite(s.seatClassId) && !m.has(s.seatClassId)) {
-            m.set(s.seatClassId, p);
-        }
-    }
-    return m;
-}
+/* =============== giá fallback theo seatClass =============== */
 function fillMissingPrices(seats) {
-    const map = buildPriceByClass(seats);
+    const byClass = new Map(); // seatClassId -> price đầu tiên > 0
     for (const s of seats) {
-        const p = Number(s.price);
-        if (!(Number.isFinite(p) && p > 0) && Number.isFinite(s.seatClassId)) {
-            const fb = map.get(s.seatClassId);
+        if (s.seatClassId && Number.isFinite(s.price) && s.price > 0 && !byClass.has(s.seatClassId)) {
+            byClass.set(s.seatClassId, s.price);
+        }
+    }
+    for (const s of seats) {
+        if (!(Number.isFinite(s.price) && s.price > 0) && s.seatClassId) {
+            const fb = byClass.get(s.seatClassId);
             if (Number.isFinite(fb))
                 s.price = fb;
         }
     }
 }
 
-/* ---------- build cars from payload ---------- */
-function buildCarsFromPayload(payload) {
-    cars = [];
-    const list = Array.isArray(payload?.coaches) ? payload.coaches : [];
-    if (!list.length)
-        return;
-
-    cars = list.map(co => {
-        const id = Number(co.id ?? co.carriageId);
-        const no = Number(co.no ?? co.sort);
-        const name = String(co.name ?? `Toa ${Number.isFinite(no) ? no : ''}`).trim();
-        if (!Number.isFinite(id))
-            return null;
-        return {
-            id,
-            code: name || `Toa ${Number.isFinite(no) ? no : id}`,
-            sort: Number.isFinite(no) ? no : id
-        };
-    }).filter(Boolean)
-            .sort((a, b) => a.sort - b.sort || a.id - b.id);
-}
-
-/* ---------- load seatmap ---------- */
+/* ================= tải seatmap ================= */
 async function fetchSeatMap() {
-    const url = `${ctx}/api/seatmap?tripId=${encodeURIComponent(tripId)}&with=availability&_=${Date.now()}`;
+    const url = `${ctx}/api/seatmap?tripId=${encodeURIComponent(tripId)}&_=${Date.now()}`;
     setLoading(true);
     try {
-        if (!$('#seatGrid'))
-            console.warn('[seatmap] Không tìm thấy #seatGrid');
-
         const r = await fetch(url, {credentials: 'same-origin', headers: {Accept: 'application/json'}});
         if (r.status === 403) {
             alert('Phiên làm việc đã hết hạn (403). Vui lòng tải lại trang.');
             return;
         }
-        if (!r.ok)
+        if (!r.ok) {
+            // log chi tiết giúp debug nếu server trả lỗi
+            let text = '';
+            try {
+                text = await r.text();
+            } catch {
+            }
+            console.error('[seatmap] GET /api/seatmap failed', r.status, text);
             throw new Error(`HTTP ${r.status}`);
-
+        }
         const payload = await r.json();
 
-        // ƯU TIÊN: dựng cars từ payload.coaches
-        buildCarsFromPayload(payload);
+        // 1) Cars (coaches) từ API
+        cars = Array.isArray(payload?.coaches) ? payload.coaches.map(co => ({
+                id: Number(co.id),
+                no: Number(co.no),
+                name: String(co.name ?? '').trim(),
+                sort: Number(co.no) || Number(co.id)
+            })) : [];
 
-        // 1) seats từ payload
-        let seatsRaw = extractFlatSeats(payload);
-        if (seatsRaw)
-            raw = seatsRaw.map(normalizeSeat);
-        else {
-            const grouped = extractGroupedSeats(payload);
-            raw = grouped ? grouped : [];
-        }
+        // loại trùng theo số toa
+        const seen = new Set();
+        cars = cars.filter(c => (c.id && !seen.has(c.sort) && seen.add(c.sort)))
+                .sort((a, b) => a.sort - b.sort || a.id - b.id);
 
-        // 2) enrich nếu có nhiều coach nhưng raw chỉ chứa 1 carriage
-        try {
-            const coachList = Array.isArray(payload?.coaches) ? payload.coaches : [];
-            if (coachList.length > 1) {
-                const rawCarIds = new Set(raw.map(s => ensureCarriageId(s)));
-                if (rawCarIds.size <= 1) {
-                    const nos = coachList.map(c => Number(c.no)).filter(Number.isFinite);
-                    const all = await fetchSeatsPerCoach(tripId, nos);
-                    if (all.length > raw.length)
-                        raw = uniqBySeatId(all);
-                }
-            }
-        } catch (e) {
-            console.warn('[seatmap] enrich by coaches failed:', e);
-        }
+        // 2) Seats từ API
+        const seatsRaw = Array.isArray(payload?.seats) ? payload.seats : [];
+        raw = seatsRaw.map(normalizeSeat);
 
-        // 3) Fallbacks
-        if (!raw.length) {
-            const coachNos = getCoachNosFromDOM();
-            raw = await fetchSeatsPerCoach(tripId, coachNos.length ? coachNos : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-        }
-        if (!raw.length) {
-            raw = readSeatsFromDOM();
-            console.warn('[seatmap] Fallback DOM seats:', raw.length);
-        }
-
+        // 3) Giá fallback
         fillMissingPrices(raw);
+
+        // 4) Group seats theo carriageId
         buildSeatsByCarId();
-        if (!cars.length)
-            buildCarsFromDOMOrData(); // chỉ fallback khi API không có coaches
-        wireMiniCars();
 
-        // Vẽ mini-cars nếu DOM ít hơn dữ liệu
-        const domCount = $$('#carMini .mini-car').length;
-        if (cars.length > 0 && domCount < cars.length)
-            renderMiniCarsFallback();
-
+        // 5) Render strip mini-car và coach
+        renderMiniCars();
         if (cars.length > 0)
             openCar(Math.min(carIndex, cars.length - 1));
         updateSummary();
 
-        const any = raw[0];
-        if (any?.departTime)
-            $('#kDepart')?.replaceChildren(any.departTime);
-        if (any?.arriveTime)
-            $('#kArrive')?.replaceChildren(any.arriveTime);
-
-        wireTrainCards();
-
-        // debug nhóm
+        // debug nhẹ
         const dbg = {};
         for (const [cid, arr] of seatsByCarId.entries())
             dbg[cid] = arr.length;
-        console.log('[seatmap] payload coaches:', payload?.coaches?.length || 0,
-                'seats:', raw.length, 'cars:', cars.length,
-                'groups:', dbg);
-    } catch (err) {
-        console.error('fetchSeatMap error:', err);
+        console.log('[seatmap] coaches:', cars.length, 'seats:', raw.length, 'groups:', dbg);
+    } catch (e) {
+        console.error('fetchSeatMap error:', e);
         alert('Không tải được sơ đồ ghế.');
     } finally {
         setLoading(false);
     }
 }
 
-/* ---------- group & mini-cars ---------- */
 function buildSeatsByCarId() {
     seatsByCarId.clear();
     for (const s0 of raw) {
-        const cid = ensureCarriageId(s0);
-        if (!Number.isFinite(cid))
+        if (!Number.isFinite(s0.carriageId))
             continue;
-        const s = {...s0, carriageId: cid};
+        const cid = s0.carriageId;
         if (!seatsByCarId.has(cid))
             seatsByCarId.set(cid, []);
-        seatsByCarId.get(cid).push(s);
+        seatsByCarId.get(cid).push({...s0});
     }
     for (const arr of seatsByCarId.values()) {
         arr.sort((a, b) => naturalCompare(a.seatCode, b.seatCode));
     }
 }
-function buildCarsFromDOMOrData() {
-    const domCars = $$('#carMini .mini-car');
-    const haveData = seatsByCarId.size > 0;
-    const domCount = domCars.length;
 
-    if (domCount >= 2 && (!haveData || domCount >= seatsByCarId.size)) {
-        cars = Array.from(domCars).map((btn, idx) => {
-            const id = Number(btn.dataset.carriageId || btn.dataset.coachNo);
-            const code = btn.dataset.carriageCode || String(idx + 1);
-            const sort = Number(btn.dataset.sort ?? (idx + 1));
-            if (!Number.isFinite(id))
-                return null;
-            return {id, code, sort: Number.isFinite(sort) ? sort : (idx + 1)};
-        }).filter(Boolean).sort((a, b) => a.sort - b.sort);
-
-        const activeBtn = Array.from(domCars).find(x => x.classList.contains('active'));
-        if (activeBtn) {
-            const activeId = Number(activeBtn.dataset.carriageId || activeBtn.dataset.coachNo);
-            const idx = cars.findIndex(c => c.id === activeId);
-            carIndex = idx >= 0 ? idx : 0;
-        } else {
-            carIndex = 0;
-        }
-        return;
-    }
-
-    // build từ dữ liệu API seats (fallback)
-    cars = Array.from(seatsByCarId.keys()).map(id => {
-        const any = (seatsByCarId.get(id) || [])[0] || {};
-        const code = any.carriageCode || '#' + id;
-        const num = parseInt((String(code).match(/\d+/) || ['0'])[0], 10);
-        return {id: Number(id), code, sort: Number.isFinite(num) ? num : Number(id)};
-    }).sort((a, b) => a.sort - b.sort || String(a.code).localeCompare(String(b.code), 'vi', {numeric: true}));
-    carIndex = 0;
-}
-function wireMiniCars() {
-    const domCars = $$('#carMini .mini-car');
-    domCars.forEach(btn => {
-        const id = Number(btn.dataset.carriageId || btn.dataset.coachNo);
-        const clone = btn.cloneNode(true);
-        clone.addEventListener('click', () => openCarById(id));
-        btn.replaceWith(clone);
-    });
-    $('#btnPrev')?.addEventListener('click', onPrevOnce, {once: true});
-    $('#btnNext')?.addEventListener('click', onNextOnce, {once: true});
-}
-function colorByIndex(i) {
-    return ['blue', 'green', 'orange', 'blue', 'green', 'orange'][i % 6];
-}
-function renderMiniCarsFallback() {
+/* ================= mini-cars ================= */
+function renderMiniCars() {
     const wrap = $('#carMini');
     if (!wrap)
         return;
@@ -431,39 +186,30 @@ function renderMiniCarsFallback() {
     cars.forEach((car, i) => {
         const el = document.createElement('button');
         el.type = 'button';
-        el.className = 'mini-car ' + colorByIndex(i) + (i === carIndex ? ' active' : '');
+        el.className = 'mini-car' + (i === carIndex ? ' active' : '');
         el.dataset.carriageId = String(car.id);
-        el.dataset.carriageCode = String(car.code);
         el.dataset.sort = String(car.sort);
         el.textContent = `Toa ${car.sort}`;
-        el.addEventListener('click', () => openCarById(car.id));
+        el.addEventListener('click', () => openCar(i));
         wrap.appendChild(el);
     });
-    $('#btnPrev')?.addEventListener('click', onPrevOnce, {once: true});
-    $('#btnNext')?.addEventListener('click', onNextOnce, {once: true});
-}
-function onPrevOnce() {
-    openCar(Math.max(0, carIndex - 1));
-    $('#btnPrev')?.addEventListener('click', onPrevOnce, {once: true});
-}
-function onNextOnce() {
-    openCar(Math.min(cars.length - 1, carIndex + 1));
-    $('#btnNext')?.addEventListener('click', onNextOnce, {once: true});
-}
-function openCarById(id) {
-    const idx = cars.findIndex(c => c.id === id);
-    if (idx >= 0)
-        openCar(idx);
+
+    const prev = $('#btnPrev'), next = $('#btnNext');
+    if (prev)
+        prev.onclick = () => openCar(Math.max(0, carIndex - 1));
+    if (next)
+        next.onclick = () => openCar(Math.min(cars.length - 1, carIndex + 1));
 }
 
-/* ---------- render ---------- */
 function openCar(i) {
     if (!cars.length)
         return;
     carIndex = Math.max(0, Math.min(i, cars.length - 1));
-    $$('#carMini .mini-car').forEach((c, idx) => c.classList.toggle('active', idx === carIndex));
-    renderCoach(cars[carIndex]);
+    renderMiniCars();               // cập nhật active
+    renderCoach(cars[carIndex]);    // vẽ ghế
 }
+
+/* ================= render coach ================= */
 function renderCoach(car) {
     const grid = $('#seatGrid');
     if (!grid)
@@ -481,21 +227,17 @@ function renderCoach(car) {
         return;
     }
 
-    // Tính maxRow/maxCol nếu có row/col
+    // Tính row/col; nếu thiếu -> auto layout
     let maxRow = 0, maxCol = 0, missing = 0;
     for (const s of seats) {
         if (s.row != null && s.col != null) {
             maxRow = Math.max(maxRow, Number(s.row));
             maxCol = Math.max(maxCol, Number(s.col));
-        } else {
+        } else
             missing++;
-        }
     }
-
-    // Auto layout nếu thiếu row/col
     if (missing > 0) {
-        const n = seats.length;
-        const cols = Math.max(6, Math.round(Math.sqrt(n)));
+        const n = seats.length, cols = Math.max(6, Math.round(Math.sqrt(n)));
         let r = 1, c = 1;
         for (const s of seats) {
             if (s.row == null || s.col == null) {
@@ -511,34 +253,35 @@ function renderCoach(car) {
         }
     }
 
-    // Set số cột cho grid
+    // set số cột cho CSS Grid (để seat layout canh giữa)
     grid.style.setProperty('--cols', String(maxCol));
-    grid.classList.remove('cols-5'); // bỏ layout cố định 5 cột (nếu có)
 
-    // Sort nhãn đẹp
     seats.sort((a, b) => naturalCompare(a.seatCode, b.seatCode));
 
     const frag = document.createDocumentFragment();
     for (const s of seats) {
         const btn = document.createElement('button');
         btn.type = 'button';
-        const isChosen = selected.has(s.seatId);
-        btn.className = 'seat ' + cssState(s) + (isChosen ? ' chosen' : '');
+        const chosen = selected.has(s.seatId);
+        const klass = s.available === false ? (s.lockExpiresAt ? 'hold' : 'sold') : 'free';
+        btn.className = `seat ${klass}${chosen ? ' chosen' : ''}`;
         btn.dataset.seatId = String(s.seatId);
         btn.dataset.carriageId = String(s.carriageId);
         btn.dataset.seatCode = s.seatCode || '';
         btn.style.gridColumn = String(Number(s.col));
         btn.style.gridRow = String(Number(s.row));
 
-        const seatLabel = String(s.seatCode || s.seatId);
-        btn.innerHTML = `<span class="seat-label">${seatLabel}</span>` + (Number(s.price) > 0 ? `<div class="seat-price">${formatVND(s.price)}</div>` : '');
-        btn.title = `${s.seatClassName || ''}${s.available ? ' • Còn' : ' • Không khả dụng'}`;
+        const priceHtml = (Number.isFinite(s.price) && s.price > 0)
+                ? `<div class="seat-price">${formatVND(s.price)}</div>`
+                : `<div class="seat-price">-</div>`;
+        btn.innerHTML = `<span class="seat-label">${s.seatCode || s.seatId}</span>${priceHtml}`;
+        btn.title = `${s.seatClassName || ''}${(s.available ?? true) ? ' • Còn' : ' • Không khả dụng'}`;
 
-        if (!s.available)
+        if (s.available === false)
             btn.disabled = true;
 
         btn.addEventListener('click', () => {
-            if (!s.available)
+            if (s.available === false)
                 return;
             const id = s.seatId;
             if (selected.has(id)) {
@@ -555,20 +298,11 @@ function renderCoach(car) {
 
         frag.appendChild(btn);
     }
-
     grid.appendChild(frag);
-    console.log('[seatmap] render coach', {carId: car.id, seats: seats.length, maxCol, maxRow});
     updateHint();
 }
 
-/* ---------- state/actions ---------- */
-function cssState(s) {
-    if (s.available)
-        return 'free';
-    if (s.lockExpiresAt)
-        return 'hold';
-    return 'sold';
-}
+/* ================= state / actions ================= */
 function updateHint() {
     const el = $('#hint');
     if (el)
@@ -582,22 +316,15 @@ function setLoading(on) {
     if (b)
         b.toggleAttribute('disabled', !!(on || busy));
 }
-function formatVND(n) {
-    try {
-        return Number(n).toLocaleString('vi-VN') + ' đ';
-    } catch {
-        return n;
-    }
-}
 function updateSummary() {
     const total = raw.length || 0;
-    const free = raw.filter(s => !!s.available).length;
+    const free = raw.filter(s => (s.available ?? true)).length;
     const booked = Math.max(0, total - free);
     $('#kFree')?.replaceChildren(String(free));
     $('#kBooked')?.replaceChildren(String(booked));
 }
 
-/* ---------- booking ---------- */
+/* ================= booking ================= */
 const BOOK_ENDPOINT = `${ctx}/api/hold`;
 (function bindBook() {
     const btn = getBookBtn();
@@ -643,31 +370,8 @@ const BOOK_ENDPOINT = `${ctx}/api/hold`;
     });
 })();
 
-/* ---------- train cards ---------- */
-function wireTrainCards() {
-    const cards = $$('#trainCards .train-card, .train-cards .train-card');
-    cards.forEach(card => {
-        const id = card.dataset.tripId;
-        if (!id)
-            return;
-        const clone = card.cloneNode(true);
-        clone.addEventListener('click', async () => {
-            if (clone.classList.contains('active'))
-                return;
-            cards.forEach(c => c.classList.remove('active'));
-            clone.classList.add('active');
-            $('#kDepart')?.replaceChildren(clone.dataset.depart || '');
-            $('#kArrive')?.replaceChildren(clone.dataset.arrive || '');
-            $('#kFree')?.replaceChildren(clone.dataset.free || '—');
-            $('#kBooked')?.replaceChildren(clone.dataset.booked || '—');
-            window.tripId = String(id);
-            selected.clear();
-            carIndex = 0;
-            await fetchSeatMap();
-        });
-        card.replaceWith(clone);
-    });
-}
-
-/* ---------- boot ---------- */
-document.addEventListener('DOMContentLoaded', fetchSeatMap);
+/* ================= boot ================= */
+document.addEventListener('DOMContentLoaded', () => {
+    fetchSeatMap();
+    // nếu có strip chọn chuyến, bạn có thể thêm wireTrainCards() như trước
+});

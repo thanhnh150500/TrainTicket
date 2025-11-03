@@ -169,41 +169,43 @@ public class SeatDao {
     }
 
     // SeatDao.java
-    // SeatDao.java
     public List<SeatView> getSeatMapWithAvailabilityForTrain(int tripId, int trainId) throws SQLException {
         String sql = """
         SELECT
             s.seat_id,
-            s.code                      AS seat_code,
+            s.code                     AS seat_code,
             s.carriage_id,
-            c.code                      AS carriage_code,
-            c.sort_order                AS carriage_sort_order,
+            s.position_info,
+            c.code                     AS carriage_code,
+            c.sort_order               AS carriage_sort_order,
+            sc.seat_class_id,
+            sc.code                    AS seat_class_code,
+            sc.name                    AS seat_class_name,
 
-            s.seat_class_id,
-            sc.code                     AS seat_class_code,
-            sc.name                     AS seat_class_name,
+            /* Fallback 1: rule khớp ngày (nếu bạn dùng ngày, thêm điều kiện ở dưới) */
+            fr_exact.price                                     AS price_exact,
 
-            s.row_no,                   -- NEW: lấy trực tiếp từ DB
-            s.col_no,                   -- NEW: lấy trực tiếp từ DB
-            s.position_info,            -- fallback nếu row/col còn null
+            /* Fallback 2: rule bất kỳ mới nhất theo route + seat_class (bỏ điều kiện ngày) */
+            fr_any.price                                       AS price_any,
 
-            CAST(NULL AS DECIMAL(18,2)) AS price,  -- TODO: nối giá nếu bạn có
-
-            CASE WHEN booked.seat_id IS NOT NULL OR locked.seat_id IS NOT NULL THEN 0 ELSE 1 END AS available,
-            locked.expires_at           AS lock_expires_at,
-            locked.booking_id           AS locking_booking_id
+            CASE WHEN booked.seat_id IS NOT NULL OR locked.seat_id IS NOT NULL
+                 THEN 0 ELSE 1 END                            AS available,
+            locked.expires_at                                  AS lock_expires_at,
+            locked.booking_id                                  AS locking_booking_id
         FROM dbo.Carriage c
         JOIN dbo.Seat s        ON s.carriage_id    = c.carriage_id
         JOIN dbo.SeatClass sc  ON sc.seat_class_id = s.seat_class_id
-        /* Ghế đã được đặt / còn giữ */
+        JOIN dbo.Trip trp      ON trp.train_id     = c.train_id AND trp.trip_id = ?
+
         LEFT JOIN (
             SELECT bi.seat_id
             FROM dbo.BookingItem bi
             JOIN dbo.Booking b ON b.booking_id = bi.booking_id
             WHERE bi.trip_id = ?
-              AND (b.status = 'PAID' OR (b.status='HOLD' AND b.hold_expires_at > SYSUTCDATETIME()))
+              AND (b.status = 'PAID'
+                   OR (b.status='HOLD' AND b.hold_expires_at > SYSUTCDATETIME()))
         ) booked ON booked.seat_id = s.seat_id
-        /* Ghế đang bị lock */
+
         LEFT JOIN (
             SELECT sl.seat_id, sl.expires_at, sl.booking_id
             FROM dbo.SeatLock sl
@@ -211,19 +213,41 @@ public class SeatDao {
               AND sl.status     = 'LOCKED'
               AND sl.expires_at > SYSUTCDATETIME()
         ) locked ON locked.seat_id = s.seat_id
+
+        /* Rule khớp ngày (nếu có cột ngày đi, mở comment 2 dòng dưới) */
+        OUTER APPLY (
+            SELECT TOP 1 f.base_price AS price
+            FROM dbo.FareRule f
+            WHERE f.route_id      = trp.route_id
+              AND f.seat_class_id = s.seat_class_id
+              -- AND (f.effective_from IS NULL OR f.effective_from <= trp.depart_date)
+              -- AND (f.effective_to   IS NULL OR f.effective_to   >= trp.depart_date)
+            ORDER BY
+              CASE WHEN f.effective_from IS NULL THEN 1 ELSE 0 END,
+              f.effective_from DESC
+        ) fr_exact
+
+        /* Rule bất kỳ mới nhất (không xét ngày) để phòng khi fr_exact = NULL */
+        OUTER APPLY (
+            SELECT TOP 1 f.base_price AS price
+            FROM dbo.FareRule f
+            WHERE f.route_id      = trp.route_id
+              AND f.seat_class_id = s.seat_class_id
+            ORDER BY
+              CASE WHEN f.effective_from IS NULL THEN 1 ELSE 0 END,
+              f.effective_from DESC
+        ) fr_any
+
         WHERE c.train_id = ?
-        ORDER BY ISNULL(c.sort_order, 9999),
-                 s.row_no, s.col_no,              -- ưu tiên row/col nếu có
-                 TRY_CONVERT(int, s.code),        -- fallback theo số trong code
-                 s.seat_id;
-        """;
+        ORDER BY ISNULL(c.sort_order, 9999), s.code;
+    """;
 
         List<SeatView> list = new ArrayList<>();
         try (Connection conn = Db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-            // 1=tripId (booked), 2=tripId (locked), 3=trainId
             ps.setInt(1, tripId);
             ps.setInt(2, tripId);
-            ps.setInt(3, trainId);
+            ps.setInt(3, tripId);
+            ps.setInt(4, trainId);
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -232,41 +256,46 @@ public class SeatDao {
                     v.seatCode = rs.getString("seat_code");
                     v.carriageId = rs.getInt("carriage_id");
                     v.carriageCode = rs.getString("carriage_code");
-
-                    // Dùng getObject cho cột có thể NULL
-                    v.seatClassId = (Integer) rs.getObject("seat_class_id");
+                    v.seatClassId = rs.getInt("seat_class_id");
                     v.seatClassCode = rs.getString("seat_class_code");
                     v.seatClassName = rs.getString("seat_class_name");
 
-                    // NEW: row/col lấy trực tiếp từ DB (có thể null)
-                    v.rowNo = (Integer) rs.getObject("row_no");
-                    v.colNo = (Integer) rs.getObject("col_no");
+                    // Ưu tiên price_exact, rồi price_any
+                    java.math.BigDecimal p1 = rs.getBigDecimal("price_exact");
+                    java.math.BigDecimal p2 = rs.getBigDecimal("price_any");
+                    v.price = (p1 != null ? p1 : p2);
 
-                    v.price = rs.getBigDecimal("price");         // có thể null
                     v.available = rs.getInt("available") == 1;
                     v.lockExpiresAt = rs.getTimestamp("lock_expires_at");
                     Object bid = rs.getObject("locking_booking_id");
                     v.lockingBookingId = (bid == null ? null : ((Number) bid).longValue());
 
-                    // Fallback: nếu DB chưa có row/col, parse từ position_info (rỗng thì để null)
-                    if (v.rowNo == null || v.colNo == null) {
-                        String pos = rs.getString("position_info");
-                        int[] rc = parseRowCol(pos);
-                        if (v.rowNo == null && rc[0] != 0) {
-                            v.rowNo = rc[0];
-                        }
-                        if (v.colNo == null && rc[1] != 0) {
-                            v.colNo = rc[1];
-                        }
-                    }
+                    String pos = rs.getString("position_info");
+                    int[] rc = parseRowCol(pos);
+                    v.rowNo = rc[0] == 0 ? null : rc[0];
+                    v.colNo = rc[1] == 0 ? null : rc[1];
 
                     list.add(v);
                 }
             }
         }
+
+        // Fallback 3 (server-side): lấp giá theo seatClass nếu vẫn còn null
+        java.util.Map<Integer, java.math.BigDecimal> byClass = new java.util.HashMap<>();
+        for (SeatView v : list) {
+            if (v.price != null && v.price.signum() > 0) {
+                byClass.putIfAbsent(v.seatClassId, v.price);
+            }
+        }
+        for (SeatView v : list) {
+            if (v.price == null && byClass.containsKey(v.seatClassId)) {
+                v.price = byClass.get(v.seatClassId);
+            }
+        }
+
         return list;
     }
-
+    
     public boolean seatBelongsToTrip(int seatId, int tripId) throws SQLException {
         String sql = """
         SELECT COUNT(*)

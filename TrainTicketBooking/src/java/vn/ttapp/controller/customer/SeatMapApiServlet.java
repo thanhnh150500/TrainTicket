@@ -31,22 +31,23 @@ public class SeatMapApiServlet extends HttpServlet {
             .registerModule(new JavaTimeModule())
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
-    // ==== DTOs ====
+    /* ===== DTOs ===== */
     public static record SeatDto(
-            int id, String code, Integer row, Integer col,
+            Integer id, String code, Integer row, Integer col,
             Long price, String status, String holdExpiresAt,
-            Integer carriageId, String carriageCode) {
+            Integer carriageId, String carriageCode,
+            Integer seatClassId, String seatClassCode, String seatClassName) {
 
     }
 
-    // ĐÃ thêm id ở đầu tham số
+    // CHÚ Ý: JS đang cần có id + no + name
     public static record CoachDto(
-            int id, int no, String name, int seatCount, List<Long> rangePrice) {
+            Integer id, Integer no, String name, Integer seatCount, List<Long> rangePrice) {
 
     }
 
     public static record Payload(
-            int tripId, Map<String, Object> coach,
+            Integer tripId, Map<String, Object> coach,
             List<SeatDto> seats, List<CoachDto> coaches, String now) {
 
     }
@@ -62,24 +63,25 @@ public class SeatMapApiServlet extends HttpServlet {
         }
 
         try {
-            int tripId = Integer.parseInt(tripIdStr);
+            final int tripId = Integer.parseInt(tripIdStr);
             Trip trip = tripService.findById(tripId);
             if (trip == null) {
                 resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Trip not found");
                 return;
             }
 
-            // ===== Toa của train =====
+            /* ===== Lấy toa của train & gán số thứ tự ổn định ===== */
             List<Carriage> cars = carService.findByTrain(trip.getTrainId());
             cars.sort(Comparator
                     .comparingInt((Carriage c) -> c.getSortOrder() != null ? c.getSortOrder() : 9999)
                     .thenComparing(Carriage::getCode, naturalComparator()));
+
             if (cars.isEmpty()) {
                 resp.sendError(HttpServletResponse.SC_NOT_FOUND, "No carriage for this trip");
                 return;
             }
 
-            // Map coachNo ↔ carriageId
+            // coachNo <-> carriageId
             Map<Integer, Integer> coachNo2CarId = new LinkedHashMap<>();
             Map<Integer, Integer> carId2CoachNo = new HashMap<>();
             int seq = 1;
@@ -89,7 +91,7 @@ public class SeatMapApiServlet extends HttpServlet {
                 seq++;
             }
 
-            // ===== Chọn toa hiện tại =====
+            /* ===== Chọn coach hiện tại từ query ===== */
             int coachNo = 1;
             String coachNoParam = req.getParameter("coachNo");
             if (coachNoParam != null && !coachNoParam.isBlank()) {
@@ -101,27 +103,28 @@ public class SeatMapApiServlet extends HttpServlet {
                 } catch (NumberFormatException ignore) {
                 }
             }
+            // chống NPE khi map không có key
             Integer carriageIdObj = coachNo2CarId.get(coachNo);
             if (carriageIdObj == null) {
                 carriageIdObj = coachNo2CarId.get(1);
             }
             final int carriageId = carriageIdObj;
 
-            // ===== Ghế toàn train (availability theo trip) =====
+            /* ===== Ghế của TOÀN BỘ train (availability theo trip) ===== */
             int trainId = trip.getTrainId();
             List<SeatView> allSeatViews = seatService.getSeatMapWithAvailabilityForTrain(tripId, trainId);
             if (allSeatViews == null) {
                 allSeatViews = List.of();
             }
 
-            // De-dup nếu query trả trùng dòng
+            // unique theo seatId
             Map<Integer, SeatView> unique = new LinkedHashMap<>();
             for (SeatView v : allSeatViews) {
                 unique.putIfAbsent(v.seatId, v);
             }
             allSeatViews = new ArrayList<>(unique.values());
 
-            // Sắp xếp ổn định để FE vẽ đẹp
+            // sort ổn định
             allSeatViews.sort(
                     Comparator.comparingInt((SeatView v) -> v.carriageId)
                             .thenComparing(v -> v.rowNo, nullsLastNatural())
@@ -130,10 +133,13 @@ public class SeatMapApiServlet extends HttpServlet {
                             .thenComparingInt(v -> v.seatId)
             );
 
-            // Coaches DTO: seatCount + khoảng giá
+            /* ===== Build coaches DTO (có id, no, name, seatCount, rangePrice) ===== */
             List<CoachDto> coaches = new ArrayList<>(cars.size());
             for (Carriage c : cars) {
-                int no = carId2CoachNo.get(c.getCarriageId());
+                Integer no = carId2CoachNo.get(c.getCarriageId());
+                if (no == null) {
+                    no = 0; // fallback, tránh NPE unboxing
+                }
                 long min = Long.MAX_VALUE, max = Long.MIN_VALUE;
                 int cnt = 0;
                 for (SeatView v : allSeatViews) {
@@ -151,29 +157,35 @@ public class SeatMapApiServlet extends HttpServlet {
                     }
                 }
                 List<Long> range = (min == Long.MAX_VALUE) ? List.of() : List.of(min, max);
-
-                // 🔧 SỬA Ở ĐÂY: truyền đủ 5 tham số theo đúng thứ tự (id, no, name, seatCount, range)
+                String name = (c.getCode() != null && !c.getCode().isBlank()) ? c.getCode() : ("Toa " + no);
                 coaches.add(new CoachDto(
-                        c.getCarriageId(), // id = carriageId thật
-                        no, // no = số thứ tự toa (1..n)
-                        c.getCode() != null ? c.getCode() : ("Toa " + no),
-                        cnt,
-                        range
+                        c.getCarriageId(), // id
+                        no, // no
+                        name, // name
+                        cnt, // seatCount
+                        range // rangePrice
                 ));
             }
 
-            // seats[]: trả toàn bộ ghế; FE lọc theo carriageId
+            /* ===== seats[]: từ allSeatViews ===== */
             List<SeatDto> seats = new ArrayList<>(allSeatViews.size());
             Map<String, Integer> seatClassCountForCurrentCoach = new HashMap<>();
 
             for (SeatView v : allSeatViews) {
                 String status = v.available ? "FREE" : (v.lockExpiresAt != null ? "HELD" : "SOLD");
                 seats.add(new SeatDto(
-                        v.seatId, v.seatCode, v.rowNo, v.colNo,
+                        v.seatId,
+                        v.seatCode,
+                        v.rowNo,
+                        v.colNo,
                         v.price != null ? v.price.longValue() : null,
                         status,
                         v.lockExpiresAt != null ? v.lockExpiresAt.toInstant().toString() : null,
-                        v.carriageId, v.carriageCode
+                        v.carriageId,
+                        v.carriageCode,
+                        v.seatClassId,
+                        v.seatClassCode,
+                        v.seatClassName
                 ));
                 if (v.carriageId == carriageId && v.seatClassName != null) {
                     seatClassCountForCurrentCoach.merge(v.seatClassName, 1, Integer::sum);
@@ -184,6 +196,8 @@ public class SeatMapApiServlet extends HttpServlet {
             String coachName = cars.stream()
                     .filter(c -> c.getCarriageId() == carriageId)
                     .map(Carriage::getCode)
+                    .filter(Objects::nonNull)
+                    .filter(s -> !s.isBlank())
                     .findFirst()
                     .orElse("Toa " + coachNo);
 
@@ -199,8 +213,10 @@ public class SeatMapApiServlet extends HttpServlet {
             coach.put("name", coachName);
             coach.put("seatClass", seatClassForCoach);
 
-            // ===== Xuất JSON =====
-            Payload out = new Payload(tripId, coach, seats, coaches, Instant.now().toString());
+            /* ===== Xuất JSON ===== */
+            Payload out = new Payload(
+                    tripId, coach, seats, coaches, Instant.now().toString()
+            );
 
             resp.setContentType("application/json; charset=UTF-8");
             resp.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
@@ -211,12 +227,19 @@ public class SeatMapApiServlet extends HttpServlet {
         } catch (NumberFormatException e) {
             resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid tripId format");
         } catch (Exception e) {
-            e.printStackTrace();
-            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal error");
+            // log thật rõ để bắt 500 nhanh
+            e.printStackTrace(); // xem trong catalina.out
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            resp.setContentType("application/json; charset=UTF-8");
+            mapper.writeValue(resp.getWriter(), Map.of(
+                    "ok", false,
+                    "error", "Internal error",
+                    "message", e.getClass().getSimpleName() + ": " + e.getMessage()
+            ));
         }
     }
 
-    // ==== comparators ====
+    /* ===== comparators ===== */
     private static Comparator<String> naturalComparator() {
         final Pattern p = Pattern.compile("(\\d+)|(\\D+)");
         return (a, b) -> {
