@@ -17,6 +17,15 @@
         <filter-name>CsrfFilter</filter-name>
         <url-pattern>/*</url-pattern>
     </filter-mapping>
+     <servlet>
+        <servlet-name>SeatMapServlet</servlet-name>
+        <servlet-class>vn.ttapp.controller.customer.SeatMapServlet</servlet-class>
+        <load-on-startup>2</load-on-startup>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>SeatMapServlet</servlet-name>
+        <url-pattern>/customer/seatmap</url-pattern>
+    </servlet-mapping>
     <servlet>
         <servlet-name>LoginServlet</servlet-name>
         <servlet-class>vn.ttapp.controller.auth.LoginServlet</servlet-class>

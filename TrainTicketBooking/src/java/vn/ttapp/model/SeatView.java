@@ -7,7 +7,7 @@ public class SeatView {
 
     public int seatId;
     public String seatCode;
-    public int seatClassId;
+    public Integer  seatClassId;
     public String seatClassCode;
     public String seatClassName;
     public int carriageId;

@@ -46,10 +46,6 @@ public class DayTabVm {
         this.url = url;
     }
 
-    // ---- Các getter tính toán cho JSP ----
-    /**
-     * Trả về chuỗi định dạng dd-MM-yyyy (VD: 04-11-2025)
-     */
     public String getDdMMyyyy() {
         if (date == null) {
             return "";
@@ -57,9 +53,6 @@ public class DayTabVm {
         return date.format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
     }
 
-    /**
-     * Trả về thứ ngắn bằng tiếng Việt (VD: "Th 2", "Th 7", "CN")
-     */
     public String getWeekday() {
         if (date == null) {
             return "";

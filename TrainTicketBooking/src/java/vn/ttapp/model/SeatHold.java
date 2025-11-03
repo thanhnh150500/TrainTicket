@@ -11,15 +11,14 @@ import java.time.OffsetDateTime;
  * @author New User
  */
 public class SeatHold {
-    public Integer seatHoldId;     // identity
+    public Integer seatHoldId;
     public Integer tripId;
     public Integer carriageId;
     public Integer seatId;
-    public String  userSession;    // sid theo HttpSession
+    public String  userSession; 
     public OffsetDateTime expiresAt;
     public OffsetDateTime createdAt;
     
-    // thêm 2 dòng này để đồng bộ với Booking flow
-    public Integer bookingId;   // null nếu chưa gắn booking
-    public Boolean isConfirmed; // true nếu đã chốt (PAID)
+    public Integer bookingId;
+    public Boolean isConfirmed;
 }

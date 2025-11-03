@@ -30,7 +30,7 @@
                        href="${ctx}/">Tìm vé</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#">Thông tin ??t ch?</a>
+                    <a class="nav-link" href="#">Thông tin đặt chỗ</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="#">Kiểm tra vé</a>
@@ -60,13 +60,13 @@
                                 <i class="bi bi-person-circle me-1"></i>${sessionScope.authUser.fullName}
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="#">Tài kho?n</a></li>
+                                <li><a class="dropdown-item" href="#">Tài khoản</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <form action="${ctx}/auth/logout" method="post" class="px-3 py-1">
                                         <input type="hidden" name="_csrf" value="${sessionScope.csrfToken}">
                                         <button class="btn btn-outline-danger w-100">
-                                            <i class="bi bi-box-arrow-right me-1"></i>??ng xu?t
+                                            <i class="bi bi-box-arrow-right me-1"></i>Đăng xuất
                                         </button>
                                     </form>
                                 </li>
@@ -77,12 +77,12 @@
                         <li class="nav-item me-2">
                             <a class="btn btn-outline-primary ${ uri.startsWith(ctx.concat('/auth/login')) ? 'active' : '' }"
                                href="${ctx}/auth/login">
-                                <i class="bi bi-person me-1"></i>??ng Nh?p
+                                <i class="bi bi-person me-1"></i>Đăng Nhập
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="btn btn-primary ${ uri.startsWith(ctx.concat('/auth/register')) ? 'active' : '' }"
-                               href="${ctx}/auth/register">??ng ký</a>
+                               href="${ctx}/auth/register">Đăng ký</a>
                         </li>
                     </c:otherwise>
                 </c:choose>

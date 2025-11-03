@@ -1,253 +1,349 @@
-/*
-Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
-Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/CascadeStyleSheet.css to edit this template
-*/
-/* 
-    Created on : Oct 28, 2025, 11:23:59 PM
-    Author     : New User
-*/
+/* ===== Base ===== */
+body {
+    font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: #fafafa;
+    color: #333;
+}
 
-/* ===== Header “Chiều đi …” ===== */
-.route-header .flag{
-    background:#1f82d1;
+.route-header .flag {
+    background: #0d6efd;
+    color: #fff;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: .9rem;
+    font-weight: 600;
+}
+
+/* ===== Train Strip ===== */
+.train-strip {
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 12px 16px;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,.05);
+}
+
+.train-cards {
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.train-card {
+    position: relative;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    padding: 12px 16px;
+    background: #f8f9fa;
+    min-width: 180px;
+    transition: .2s;
+}
+.train-card.active {
+    border-color: #0d6efd;
+    background: #e7f1ff;
+    box-shadow: 0 0 0 2px #cfe2ff inset;
+}
+.train-card .train-head {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: #0d6efd;
+    margin-bottom: 4px;
+}
+
+.mini-cars{
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+}
+.mini-car{
+    white-space:nowrap;
+}
+
+.train-card .kv {
+    font-size: .8rem;
+    color: #666;
+}
+.train-card .vv {
+    font-size: .9rem;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+.train-card .wheels {
+    position: absolute;
+    left: 50%;
+    bottom: 6px;
+    transform: translateX(-50%);
+    width: 32px;
+    height: 4px;
+    background: #bbb;
+    border-radius: 2px;
+}
+.train-card.ghost {
+    opacity: .45;
+}
+
+/* ===== Mini-cars (carriages) ===== */
+.mini-cars {
+    overflow-x: auto;
+    white-space: nowrap;
+    gap: 8px;
+    padding: 8px 2px 2px;
+}
+.mini-cars::-webkit-scrollbar {
+    height: 6px;
+}
+.mini-cars::-webkit-scrollbar-thumb {
+    background: #d0d7de;
+    border-radius: 6px;
+}
+
+.mini-car {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #dee2e6;
+    background: #f8f9fa;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: .95rem;
+    cursor: pointer;
+    transition: .18s;
+}
+.mini-car:hover {
+    background: #eef6ff;
+    border-color: #91c3ff;
+}
+.mini-car.active {
+    background: #0d6efd;
+    color: #fff;
+    border-color: #0d6efd;
+}
+
+/* màu theo index (JS: colorByIndex) */
+.mini-car.blue   {
+    border-color:#cfe2ff;
+    background:#eff6ff;
+}
+.mini-car.green  {
+    border-color:#cde9d6;
+    background:#e9f7ef;
+}
+.mini-car.orange {
+    border-color:#ffe0b2;
+    background:#fff3e0;
+}
+.mini-car.blue.active   {
+    background:#0d6efd;
     color:#fff;
-    border-radius:6px 0 0 6px;
-    padding:6px 10px;
-    font-weight:700
 }
-.route-header .route-text{
-    background:#e9f4ff;
-    border-radius:0 6px 6px 0;
-    padding:6px 10px;
-    color:#0b5fa6
-}
-
-/* ===== Train cards ===== */
-.train-cards{
-    overflow:auto;
-}
-.train-card{
-    width:140px;
-    min-height:160px;
-    background:#f2f4f7;
-    border:2px solid #cfd6e0;
-    border-radius:12px;
-    padding:8px 10px;
-    position:relative;
-    text-align:center;
-    flex:0 0 auto
-}
-.train-card .train-head{
-    font-weight:800;
-    font-size:20px;
-    margin-bottom:6px
-}
-.train-card .kv{
-    font-size:12px;
-    color:#6b7280
-}
-.train-card .vv{
-    font-weight:700;
-    margin-bottom:4px
-}
-.train-card.active{
-    background:#008bdc;
+.mini-car.green.active  {
+    background:#16a34a;
     color:#fff;
-    border-color:#008bdc
+    border-color:#16a34a;
 }
-.train-card.active .kv{
-    color:#cde9ff
-}
-.train-card .wheels{
-    position:absolute;
-    left:16px;
-    right:16px;
-    bottom:6px;
-    height:8px;
-    background:linear-gradient(90deg,transparent 0,transparent 15%,#333 15%,#333 35%,transparent 35%,transparent 65%,#333 65%,#333 85%,transparent 85%,transparent 100%);
-    border-radius:4px
-}
-.train-card.ghost{
-    opacity:.6
-}
-
-/* ===== Track line ===== */
-.train-line{
-    height:6px;
-    background:#454f63;
-    border-radius:3px;
-    margin:10px 0
-}
-
-/* ===== Mini cars (toa nhỏ 1..n) ===== */
-.mini-cars .car{
-    width:36px;
-    height:18px;
-    border-radius:3px;
-    background:#7bbaf1;
-    position:relative;
-    cursor:pointer
-}
-.mini-cars .car.green{
-    background:#7fd7a5
-}
-.mini-cars .car.orange{
-    background:#ffb169
-}
-.mini-cars .car.blue{
-    background:#7bbaf1
-}
-.mini-cars .car .num{
-    position:absolute;
-    top:50%;
-    left:50%;
-    transform:translate(-50%,-50%);
-    font-size:12px;
-    font-weight:700;
-    color:#0b2b4a
-}
-.mini-cars .car.active{
-    outline:3px solid #0b7cd6
+.mini-car.orange.active {
+    background:#f59e0b;
+    color:#fff;
+    border-color:#f59e0b;
 }
 
 /* ===== Coach wrapper ===== */
-.coach-wrapper{
-    border:2px solid #cbd5e1;
-    border-radius:14px;
-    padding:14px;
-    background:#fff
+.coach-wrapper {
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    background: #fff;
+    padding: 16px 20px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.04);
 }
-.coach-header .coach-title{
-    font-size:18px;
-    font-weight:800;
-    color:#0b5fa6
+.coach-header {
+    margin-bottom: 12px;
 }
-.pager .nav-btn{
-    width:36px;
-    height:36px;
-    border-radius:100px;
-    border:1px solid #b6c2d0;
-    background:#fff;
-    font-weight:700
-}
-.pager .nav-btn:hover{
-    background:#eef5ff
+.coach-title  {
+    font-weight: 700;
+    font-size: 1.05rem;
 }
 
-/* braces */
-.coach-body{
-    display:flex;
-    align-items:stretch;
-    gap:10px;
-    margin-top:10px
+.pager .nav-btn {
+    background: #f1f3f5;
+    border: 1px solid #d0d7de;
+    color: #333;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: .18s;
 }
-.brace{
-    width:24px;
-    border:3px solid #2a69b6;
-    border-radius:12px;
-}
-.brace.left{
-    border-right:0
-}
-.brace.right{
-    border-left:0
-}
-
-/* ===== Seat grid 2–aisle–2 ===== */
-.seat-area{
-    flex:1;
-    border:2px solid #2a69b6;
-    border-radius:10px;
-    padding:16px
-}
-.seat-grid{
-    display:grid;
-    grid-auto-rows:48px;
-    grid-template-columns: repeat(2,56px) 24px repeat(2,56px);
-    gap:10px 14px;
-}
-.aisle{
-    grid-column:3;
-    width:24px
+.pager .nav-btn:hover {
+    background:#0d6efd;
+    color:#fff;
+    border-color:#0d6efd;
 }
 
-.seat{
-    width:56px;
-    height:48px;
-    border-radius:8px;
+/* ===== Seat area ===== */
+.seat-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+.brace {
+    width: 12px;
+    background:#d6d8da;
+    border-radius:4px;
+    height: 180px;
+}
+.brace.left  {
+    margin-right: 10px;
+}
+.brace.right {
+    margin-left: 10px;
+}
+
+.seat-grid {
+    display: grid;
+    width: 100%;
+    gap: 12px;
+    justify-items: center;
+    padding: 10px 0;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+}
+.seat-grid.cols-5 {
+    grid-template-columns: repeat(5, minmax(80px, 1fr));
+}
+.aisle {
+    visibility: hidden;
+} /* ô trống tạo lối đi */
+
+.seat {
+    width: 80px;
+    height: 72px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #dee2e6;
+    border-radius: 12px;
+    background: #fff;
+    font-weight: 700;
+    text-align: center;
+    padding: 6px 4px;
+    gap: 4px;
+    transition: transform .15s, border-color .15s, background .15s;
+}
+.seat:hover {
+    transform: scale(1.05);
+}
+.seat:focus-visible {
+    outline: 2px solid #0d6efd55;
+    outline-offset: 2px;
+}
+
+.seat.free {
+    background:#e9f8ef;
+    border-color:#74d680;
+}
+.seat.hold {
+    background:#fff3cd;
+    border-color:#ffca2c;
+}
+.seat.sold {
+    background:#fde2e2;
+    border-color:#f5c2c7;
+    color:#a33;
+}
+.seat.chosen {
+    background:#cfe2ff;
+    border-color:#0d6efd;
+}
+
+.seat:disabled {
+    opacity:.6;
+    cursor:not-allowed;
+}
+
+.seat .seat-label {
+    font-size: .95rem;
+    line-height: 1;
+}
+.seat .seat-price {
+    font-size: .8rem;
+    color:#666;
+    font-weight: 600;
+}
+
+/* ===== Legend & actions ===== */
+.legend {
     display:flex;
     align-items:center;
-    justify-content:center;
-    font-weight:800;
-    border:2px solid #ccd5e1;
-    background:#f7fafc;
-    cursor:pointer;
+    gap:16px;
+    font-size:.9rem;
 }
-.seat.free{
-    background:#eaf9ee;
-    border-color:#b9e7c6;
-    color:#0a7a3b
-}
-.seat.hold{
-    background:#ffe7cc;
-    border-color:#ffc38f;
-    color:#9a4a00;
-    cursor:not-allowed
-}
-.seat.sold{
-    background:#eceff3;
-    border-color:#d3d9e3;
-    color:#8d99a8;
-    cursor:not-allowed
-}
-.seat.chosen{
-    background:#e5efff;
-    border-color:#b7d1ff;
-    color:#0b5fa6
-}
-
-.legend .dot{
-    display:inline-block;
+.legend .dot {
     width:14px;
     height:14px;
-    border-radius:3px;
-    margin-right:6px;
-    transform:translateY(2px)
+    border-radius:50%;
+    margin-right:4px;
+    display:inline-block;
 }
-.legend .free{
-    background:#eaf9ee;
-    border:2px solid #b9e7c6
+.dot.free   {
+    background:#74d680;
 }
-.legend .hold{
-    background:#ffe7cc;
-    border:2px solid #ffc38f
+.dot.hold   {
+    background:#ffca2c;
 }
-.legend .sold{
-    background:#eceff3;
-    border:2px solid #d3d9e3
+.dot.sold   {
+    background:#f87171;
 }
-.legend .chosen{
-    background:#e5efff;
-    border:2px solid #b7d1ff
-}
-.muted{
-    color:#6b7280
+.dot.chosen {
+    background:#0d6efd;
 }
 
-.addon{
-    border-top:1px dashed #cbd5e1;
-    padding-top:14px
-}
-.addon-title{
-    font-weight:800;
-    margin-bottom:8px;
-    color:#0b5fa6
-}
-.addon-row{
+.addon {
     background:#fff;
-    border:1px solid #e5e7eb;
-    border-radius:10px;
-    padding:12px
+    border:1px solid #dee2e6;
+    border-radius: 12px;
+    padding:16px 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.05);
+}
+.addon-title {
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+.actions .muted {
+    color:#666;
+    font-size:.9rem;
+}
+.actions .btn {
+    border-radius: 10px;
+    font-weight: 700;
 }
 
-
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+    .seat {
+        width: 68px;
+        height: 62px;
+    }
+    .seat-grid.cols-5 {
+        grid-template-columns: repeat(5, minmax(60px, 1fr));
+    }
+    .brace {
+        display: none;
+    }
+}
+@media (max-width: 576px) {
+    .seat {
+        width: 60px;
+        height: 56px;
+    }
+    .seat-grid.cols-5 {
+        grid-template-columns: repeat(5, minmax(52px, 1fr));
+        gap: 10px;
+    }
+    .train-card {
+        min-width: 150px;
+    }
+}

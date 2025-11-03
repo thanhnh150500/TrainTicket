@@ -160,10 +160,10 @@
                                     <div class="col-md-2 text-md-end">
                                         <div class="text-muted small mb-1">Từ</div>
                                         <div class="h5 fw-bold mb-2">
-                                            <span class="text-muted small">đ</span>
                                             <c:out value="${t.minPrice}"/>
+                                            <span class="text-muted small">đ</span>
                                         </div>
-                                        <a class="btn btn-warning fw-semibold px-4" href="${ctx}/seatmap?tripId=${t.tripId}">
+                                        <a class="btn btn-warning fw-semibold px-4" href="${pageContext.request.contextPath}/seatmap?tripId=${t.tripId}">
                                             Chọn chỗ
                                         </a>
                                     </div>

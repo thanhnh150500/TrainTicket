@@ -23,17 +23,10 @@ public class CarriageDao {
         return x;
     }
 
-    /**
-     * Chuẩn hoá mã toa: cắt khoảng trắng & upper-case (C01, C02...).
-     */
     private String normalize(String s) {
         return s == null ? null : s.trim().toUpperCase();
     }
 
-    /**
-     * Liệt kê tất cả toa, sắp xếp theo tàu → sort_order → số tự nhiên của code
-     * (nếu có) → code.
-     */
     public List<Carriage> findAll() throws SQLException {
         String sql = """
             SELECT c.carriage_id, c.train_id, c.code, c.seat_class_id, c.sort_order,
@@ -74,32 +67,29 @@ public class CarriageDao {
         }
     }
 
-    /**
-     * Lấy các toa theo train (dùng cho seat map).
-     */
     public List<Carriage> findByTrain(int trainId) throws SQLException {
         String sql = """
-            SELECT c.carriage_id, c.train_id, c.code, c.seat_class_id, c.sort_order,
-                   t.code AS train_code, t.name AS train_name,
-                   sc.code AS seat_class_code, sc.name AS seat_class_name
-            FROM dbo.Carriage c
-            JOIN dbo.Train t ON t.train_id = c.train_id
-            JOIN dbo.SeatClass sc ON sc.seat_class_id = c.seat_class_id
-            WHERE c.train_id = ?
-            ORDER BY c.sort_order,
-                     TRY_CONVERT(int, c.code),
-                     c.code
-        """;
-        List<Carriage> list = new ArrayList<>();
+      SELECT carriage_id, train_id, seat_class_id, code, sort_order
+      FROM dbo.Carriage
+      WHERE train_id = ?
+      ORDER BY ISNULL(sort_order,9999), code
+    """;
+        List<Carriage> out = new ArrayList<>();
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, trainId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    list.add(map(rs));
+                    Carriage x = new Carriage();
+                    x.setCarriageId(rs.getInt("carriage_id"));
+                    x.setTrainId(rs.getInt("train_id"));
+                    x.setSeatClassId(rs.getInt("seat_class_id"));
+                    x.setCode(rs.getString("code"));
+                    x.setSortOrder(rs.getInt("sort_order"));
+                    out.add(x);
                 }
             }
         }
-        return list;
+        return out;
     }
 
     public boolean codeExists(int trainId, String code) throws SQLException {
