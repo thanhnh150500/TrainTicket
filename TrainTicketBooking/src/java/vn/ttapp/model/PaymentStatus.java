@@ -1,15 +1,34 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package vn.ttapp.model;
 
-/**
- *
- * @author New User
- */
 public enum PaymentStatus {
-    INIT,       // khởi tạo
-    SUCCESS,    // thanh toán thành công
-    FAILED      // thanh toán thất bại
+
+    INITIATED,
+    PENDING,
+    SUCCESS,
+    FAILED, 
+    CANCELED; 
+
+    public static PaymentStatus from(String s) {
+        if (s == null || s.isBlank()) {
+            return null;
+        }
+        return switch (s.trim().toUpperCase()) {
+            case "INIT", "INITIATED" ->
+                INITIATED;
+            case "PENDING" ->
+                PENDING;
+            case "SUCCESS", "SUCCEEDED", "COMPLETED", "PAID" ->
+                SUCCESS;
+            case "FAILED", "ERROR" ->
+                FAILED;
+            case "CANCELED", "CANCELLED" ->
+                CANCELED;
+            default ->
+                INITIATED;
+        };
+    }
+
+    public String toDbValue() {
+        return name();
+    }
 }

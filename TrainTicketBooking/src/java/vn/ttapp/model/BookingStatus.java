@@ -1,25 +1,33 @@
 package vn.ttapp.model;
 
 public enum BookingStatus {
-    DRAFT, HOLD, PAID, CANCELED, EXPIRED;
+    DRAFT,
+    HOLD, 
+    PAID, 
+    CANCELED, 
+    EXPIRED; 
 
     public static BookingStatus from(String s) {
-        if (s == null) {
+        if (s == null || s.isBlank()) {
             return null;
         }
-        return switch (s.toUpperCase()) {
+        return switch (s.trim().toUpperCase()) {
             case "DRAFT" ->
                 DRAFT;
             case "HOLD" ->
                 HOLD;
-            case "PAID" ->
+            case "PAID", "SUCCESS", "SUCCEEDED", "COMPLETED" ->
                 PAID;
-            case "CANCELED" ->
+            case "CANCELED", "CANCELLED" ->
                 CANCELED;
-            case "EXPIRED" ->
+            case "EXPIRED", "TIMEOUT" ->
                 EXPIRED;
             default ->
                 DRAFT;
         };
+    }
+
+    public String toDbValue() {
+        return name();
     }
 }

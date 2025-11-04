@@ -1,4 +1,4 @@
-// assets/js/seatmap.js — FINAL (API-match + price + centered grid + checkout post fallback hold)
+// assets/js/seatmap.js — FINAL (API-match V2: status FREE/LOCKED/LOCKED_BY_ME/BOOKED + preselect my holds)
 const MAX_SELECT = 4;
 let raw = [];                 // toàn bộ seat (mọi toa) từ API
 let seatsByCarId = new Map(); // group theo carriageId
@@ -6,8 +6,8 @@ let cars = [];                // [{id, no, name, sort}]
 let carIndex = 0;
 let busy = false;
 
-// Thay Set -> Map để giữ đủ thông tin ghế
-const selected = new Map();   // key: seatId, val: seatObj (chuẩn normalizeSeat)
+// Map seatId -> seatObj
+const selected = new Map();
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
@@ -36,16 +36,11 @@ function naturalCompare(a, b) {
     }
     return A.length - B.length;
 }
-function toBoolFromStatus(st) {
-    if (st == null)
-        return null;
-    const s = String(st).toUpperCase();
-    if (s === 'FREE' || s === 'AVAILABLE')
-        return true;
-    if (['SOLD', 'BOOKED', 'LOCKED', 'HOLD', 'HELD'].includes(s))
-        return false;
-    return null;
-}
+const S_FREE = 'FREE';
+const S_LOCKED = 'LOCKED';
+const S_LOCKED_ME = 'LOCKED_BY_ME';
+const S_BOOKED = 'BOOKED';
+
 function formatVND(n) {
     try {
         return Number(n).toLocaleString('vi-VN') + ' đ';
@@ -65,13 +60,24 @@ function normalizeSeat(s) {
     const row = Number.isFinite(+s.row) ? +s.row : null;
     const col = Number.isFinite(+s.col) ? +s.col : null;
     const price = Number.isFinite(+s.price) ? +s.price : null;
-    const available = toBoolFromStatus(s.status);
-    const lockExpiresAt = s.holdExpiresAt ?? null;
+
+    const statusRaw = String(s.status ?? '').toUpperCase();
+    const status = [S_FREE, S_LOCKED, S_LOCKED_ME, S_BOOKED].includes(statusRaw) ? statusRaw : S_FREE;
+
+    const lockedByMe = !!(s.lockedByMe === true || status === S_LOCKED_ME);
+    const remainSec = Number.isFinite(+s.remainSec) ? +s.remainSec : null;
+    const holdExpiresAt = s.holdExpiresAt ?? null;
+
+    // available: chỉ FREE mới chọn; LOCKED_BY_ME sẽ tự đánh dấu chọn nhưng không cho bỏ chọn
+    const selectable = (status === S_FREE);
+    const myHold = (status === S_LOCKED_ME);
 
     return {
         seatId, seatCode, carriageId, carriageCode,
         seatClassId, seatClassCode, seatClassName,
-        row, col, price, available, lockExpiresAt
+        row, col, price,
+        status, lockedByMe, remainSec, holdExpiresAt,
+        selectable, myHold
     };
 }
 
@@ -103,12 +109,7 @@ async function fetchSeatMap() {
             return;
         }
         if (!r.ok) {
-            let text = '';
-            try {
-                text = await r.text();
-            } catch {
-            }
-            console.error('[seatmap] GET /api/seatmap failed', r.status, text);
+            console.error('[seatmap] GET /api/seatmap failed', r.status, await r.text().catch(() => ''));
             throw new Error(`HTTP ${r.status}`);
         }
         const payload = await r.json();
@@ -120,7 +121,6 @@ async function fetchSeatMap() {
                 name: String(co.name ?? '').trim(),
                 sort: Number(co.no) || Number(co.id)
             })) : [];
-
         const seen = new Set();
         cars = cars.filter(c => (c.id && !seen.has(c.sort) && seen.add(c.sort)))
                 .sort((a, b) => a.sort - b.sort || a.id - b.id);
@@ -128,6 +128,13 @@ async function fetchSeatMap() {
         // 2) Seats
         const seatsRaw = Array.isArray(payload?.seats) ? payload.seats : [];
         raw = seatsRaw.map(normalizeSeat);
+
+        // Preselect các ghế do tôi đang giữ (LOCKED_BY_ME)
+        selected.clear();
+        for (const s of raw) {
+            if (s.myHold)
+                selected.set(s.seatId, s);
+        }
 
         // 3) Giá fallback
         fillMissingPrices(raw);
@@ -145,7 +152,7 @@ async function fetchSeatMap() {
         const dbg = {};
         for (const [cid, arr] of seatsByCarId.entries())
             dbg[cid] = arr.length;
-        console.log('[seatmap] coaches:', cars.length, 'seats:', raw.length, 'groups:', dbg);
+        console.log('[seatmap] coaches:', cars.length, 'seats:', raw.length, 'groups:', dbg, 'selected(myhold):', selected.size);
     } catch (e) {
         console.error('fetchSeatMap error:', e);
         alert('Không tải được sơ đồ ghế.');
@@ -254,8 +261,17 @@ function renderCoach(car) {
     for (const s of seats) {
         const btn = document.createElement('button');
         btn.type = 'button';
+
+        // map status -> class
+        let klass = 'free';
+        if (s.status === S_BOOKED)
+            klass = 'sold';
+        else if (s.status === S_LOCKED)
+            klass = 'hold';
+        else if (s.status === S_LOCKED_ME)
+            klass = 'myhold';
+
         const chosen = selected.has(s.seatId);
-        const klass = s.available === false ? (s.lockExpiresAt ? 'hold' : 'sold') : 'free';
         btn.className = `seat ${klass}${chosen ? ' chosen' : ''}`;
         btn.dataset.seatId = String(s.seatId);
         btn.dataset.carriageId = String(s.carriageId);
@@ -266,15 +282,29 @@ function renderCoach(car) {
         const priceHtml = (Number.isFinite(s.price) && s.price > 0)
                 ? `<div class="seat-price">${formatVND(s.price)}</div>`
                 : `<div class="seat-price">-</div>`;
-        btn.innerHTML = `<span class="seat-label">${s.seatCode || s.seatId}</span>${priceHtml}`;
-        btn.title = `${s.seatClassName || ''}${(s.available ?? true) ? ' • Còn' : ' • Không khả dụng'}`;
 
-        if (s.available === false)
-            btn.disabled = true;
+        // countdown nhỏ nếu đang lock
+        let badge = '';
+        if (s.status === S_LOCKED || s.status === S_LOCKED_ME) {
+            const secs = Number.isFinite(s.remainSec) ? s.remainSec : null;
+            if (secs != null)
+                badge = `<div class="seat-ttl">${Math.max(0, secs)}s</div>`;
+        }
+
+        btn.innerHTML = `<span class="seat-label">${s.seatCode || s.seatId}</span>${priceHtml}${badge}`;
+        const human = s.status === S_FREE ? 'Còn'
+                : (s.status === S_LOCKED_ME ? 'Bạn đang giữ'
+                        : (s.status === S_LOCKED ? 'Đang giữ'
+                                : 'Đã bán'));
+        btn.title = `${s.seatClassName || ''} • ${human}`;
+
+        // Chặn click nếu không phải FREE; ghế tôi đang giữ không cho bỏ chọn ở đây
+        if (!s.selectable)
+            btn.disabled = (s.status !== S_FREE);
 
         btn.addEventListener('click', () => {
-            if (s.available === false)
-                return;
+            if (!s.selectable)
+                return; // chỉ FREE được chọn/bỏ
             const id = s.seatId;
             if (selected.has(id)) {
                 selected.delete(id);
@@ -284,7 +314,7 @@ function renderCoach(car) {
                     alert(`Bạn chỉ chọn tối đa ${MAX_SELECT} ghế`);
                     return;
                 }
-                selected.set(id, s); // lưu full seat object
+                selected.set(id, s);
                 btn.classList.add('chosen');
             }
             updateHint();
@@ -299,11 +329,15 @@ function renderCoach(car) {
 /* ================= state / actions ================= */
 function updateHint() {
     const el = $('#hint');
-    if (el)
-        el.textContent = selected.size
-                ? `Đang chọn: ${selected.size}/${MAX_SELECT} ghế`
-                : `Chọn tối đa ${MAX_SELECT} ghế`;
+    if (!el)
+        return;
+    const myHoldCount = Array.from(selected.values()).filter(s => s.myHold).length;
+    const justSelected = selected.size - myHoldCount;
+    el.textContent = selected.size
+            ? `Đang chọn: ${justSelected} mới + ${myHoldCount} ghế bạn đang giữ`
+            : `Chọn tối đa ${MAX_SELECT} ghế`;
 }
+
 function getBookBtn() {
     return document.getElementById('btnBook') || document.getElementById('btnHold');
 }
@@ -313,11 +347,18 @@ function setLoading(on) {
         b.toggleAttribute('disabled', !!on || busy);
 }
 function updateSummary() {
-    const free = raw.filter(s => s.available === true).length;
     const total = raw.length;
-    const booked = Math.max(0, total - free);
+    const free = raw.filter(s => s.status === S_FREE).length;
+    const myhold = raw.filter(s => s.status === S_LOCKED_ME).length;
+    const locked = raw.filter(s => s.status === S_LOCKED).length;
+    const booked = raw.filter(s => s.status === S_BOOKED).length;
+
     $('#kFree')?.replaceChildren(String(free));
     $('#kBooked')?.replaceChildren(String(booked));
+    $('#kHold')?.replaceChildren(String(locked));
+    $('#kMyHold')?.replaceChildren(String(myhold));
+
+    // nếu bạn chỉ có kFree/kBooked trong DOM thì vẫn ok
 }
 
 /* ================== BOOK/HOLD or CHECKOUT ================== */
@@ -337,7 +378,18 @@ async function postHold() {
         alert('Thiếu CSRF token. Vui lòng tải lại trang.');
         return;
     }
-    const body = {tripId: Number(tripId), seatIds: Array.from(selected.keys())};
+
+    // chỉ gửi những ghế FREE vừa chọn thêm (không gửi ghế myHold vì đã giữ)
+    const newSeatIds = Array.from(selected.values())
+            .filter(s => s.status === S_FREE)
+            .map(s => s.seatId);
+
+    if (newSeatIds.length === 0) {
+        alert('Không có ghế mới để giữ.');
+        return;
+    }
+
+    const body = {tripId: Number(tripId), seatIds: newSeatIds};
     busy = true;
     setLoading(true);
     try {
@@ -359,8 +411,7 @@ async function postHold() {
             return;
         }
         alert('Giữ ghế thành công!');
-        selected.clear();
-        await fetchSeatMap();
+        await fetchSeatMap(); // sẽ tự preselect lại myHold
     } catch (e) {
         console.error('Book/Hold error', e);
         alert('Giữ ghế thất bại.');
@@ -373,7 +424,6 @@ async function postHold() {
 function postCheckout() {
     let form = document.getElementById('checkoutPostForm');
     if (!form) {
-        // Tạo mới (fallback) → tự thêm _csrf từ <meta>
         form = document.createElement('form');
         form.method = 'POST';
         form.action = `${ctx}/checkout`;
@@ -387,7 +437,6 @@ function postCheckout() {
         addHidden(form, 'departTime', $('#kDepart')?.textContent?.trim() || '');
         addHidden(form, 'arriveTime', $('#kArrive')?.textContent?.trim() || '');
     } else {
-        // Form có sẵn → nếu input _csrf rỗng thì châm từ <meta>
         const t = form.querySelector('input[name="_csrf"]');
         if (t && (!t.value || !t.value.trim()))
             t.value = CSRF() || '';
@@ -397,6 +446,7 @@ function postCheckout() {
     if (seatsDiv !== form)
         seatsDiv.innerHTML = '';
 
+    // gồm cả ghế myHold (để đi tiếp thanh toán)
     for (const s of selected.values()) {
         addHidden(seatsDiv, 'seatId[]', s.seatId);
         addHidden(seatsDiv, 'seatCode[]', s.seatCode);
@@ -405,28 +455,22 @@ function postCheckout() {
         addHidden(form, 'price[]', Number(s.price ?? 0));
         addHidden(seatsDiv, 'seatClassName[]', s.seatClassName || '');
     }
-
     form.submit();
 }
-
 
 (function bindBook() {
     const btn = getBookBtn();
     if (!btn)
         return;
-
     btn.addEventListener('click', async () => {
         if (selected.size === 0) {
             alert('Vui lòng chọn ít nhất 1 ghế');
             return;
         }
-
-        // Nếu có form checkout -> chuyển sang trang "Thông tin khách hàng"
         if (document.getElementById('checkoutPostForm')) {
             postCheckout();
             return;
         }
-        // Nếu không có form (flow cũ) -> gọi API hold
         await postHold();
     });
 })();
@@ -434,5 +478,5 @@ function postCheckout() {
 /* ================= boot ================= */
 document.addEventListener('DOMContentLoaded', () => {
     fetchSeatMap();
-    // nếu có strip chọn chuyến, có thể bổ sung wireTrainCards() ở đây
+    // có thể bổ sung wireTrainCards() nếu cần
 });

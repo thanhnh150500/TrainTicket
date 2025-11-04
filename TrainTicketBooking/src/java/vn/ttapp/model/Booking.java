@@ -6,17 +6,18 @@ import java.util.UUID;
 
 public class Booking {
 
-    private Long bookingId;          // BIGINT IDENTITY
-    private UUID userId;             // UNIQUEIDENTIFIER (FK Users)
-    private String contactEmail;     // NVARCHAR(255)
-    private String contactPhone;     // NVARCHAR(32)
-    private String status;           // NVARCHAR(20): DRAFT / HOLD / PAID / CANCELED / EXPIRED
-    private BigDecimal subtotal;     // DECIMAL(18,2)
-    private BigDecimal discountTotal;// DECIMAL(18,2)
-    private BigDecimal totalAmount;  // DECIMAL(18,2)
-    private OffsetDateTime createdAt;
-    private OffsetDateTime updatedAt;
+    private Long bookingId;             // BIGINT IDENTITY
+    private UUID userId;                // UNIQUEIDENTIFIER (FK Users)
+    private String contactEmail;        // NVARCHAR(255)
+    private String contactPhone;        // NVARCHAR(32)
+    private String status;              // NVARCHAR(20): DRAFT / HOLD / PAID / CANCELED / EXPIRED
+    private BigDecimal subtotal;        // DECIMAL(18,2)
+    private BigDecimal discountTotal;   // DECIMAL(18,2)
+    private BigDecimal totalAmount;     // DECIMAL(18,2)
+    private OffsetDateTime createdAt;   // DATETIME2
+    private OffsetDateTime updatedAt;   // DATETIME2
     private OffsetDateTime holdExpiresAt; // NULL nếu không giữ chỗ
+    private OffsetDateTime paidAt;      // DATETIME2 NULL — thời điểm thanh toán
 
     // ====== Constructors ======
     public Booking() {
@@ -109,5 +110,13 @@ public class Booking {
 
     public void setHoldExpiresAt(OffsetDateTime holdExpiresAt) {
         this.holdExpiresAt = holdExpiresAt;
+    }
+
+    public OffsetDateTime getPaidAt() {
+        return paidAt;
+    }
+
+    public void setPaidAt(OffsetDateTime paidAt) {
+        this.paidAt = paidAt;
     }
 }

@@ -1,3 +1,21 @@
+/* ===== THEME VARS ===== */
+:root{
+    --c-free-bg: #e9f8ef;
+    --c-free-bd: #74d680;
+
+    --c-hold-bg: #fff3cd;
+    --c-hold-bd: #ffca2c;
+
+    --c-myhold-bg: #e7f7ff;
+    --c-myhold-bd: #22a6f2;
+
+    --c-sold-bg: #fde2e2;
+    --c-sold-bd: #f5c2c7;
+
+    --c-chosen-bg: #cfe2ff;
+    --c-chosen-bd: #0d6efd;
+}
+
 /* ===== Base ===== */
 body {
     font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -11,7 +29,7 @@ body {
     white-space: nowrap;
     gap: 8px;
     padding: 8px 2px 2px;
-    display:flex;
+    display: flex;
 }
 
 .mini-cars::-webkit-scrollbar {
@@ -20,13 +38,6 @@ body {
 .mini-cars::-webkit-scrollbar-thumb {
     background: #d0d7de;
     border-radius: 6px;
-}
-
-.seat-grid{
-  display:grid;
-  grid-template-columns: repeat(var(--cols, 8), minmax(40px,1fr));
-  justify-content:center;
-  gap:8px;
 }
 
 .mini-car {
@@ -97,7 +108,8 @@ body {
     font-weight:700;
     text-align:center;
     padding:6px 4px;
-    transition:transform .15s, border-color .15s, background .15s;
+    transition:transform .15s, border-color .15s, background .15s, box-shadow .15s;
+    position: relative; /* để gắn badge TTL */
 }
 .seat:hover{
     transform:scale(1.05);
@@ -107,22 +119,28 @@ body {
     outline-offset:2px;
 }
 
-.seat.free {
-    background:#e9f8ef;
-    border-color:#74d680;
+/* Trạng thái khớp với JS: free / hold / myhold / sold / chosen */
+.seat.free{
+    background: var(--c-free-bg);
+    border-color: var(--c-free-bd);
 }
-.seat.hold {
-    background:#fff3cd;
-    border-color:#ffca2c;
+.seat.hold{
+    background: var(--c-hold-bg);
+    border-color: var(--c-hold-bd);
 }
-.seat.sold {
-    background:#fde2e2;
-    border-color:#f5c2c7;
+.seat.myhold{
+    background: var(--c-myhold-bg);
+    border-color: var(--c-myhold-bd);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-myhold-bd) 60%, transparent) inset;
+}
+.seat.sold{
+    background: var(--c-sold-bg);
+    border-color: var(--c-sold-bd);
     color:#a33;
 }
 .seat.chosen{
-    background:#cfe2ff;
-    border-color:#0d6efd;
+    background: var(--c-chosen-bg);
+    border-color: var(--c-chosen-bd);
 }
 .seat:disabled{
     opacity:.6;
@@ -139,31 +157,49 @@ body {
     font-weight:600;
 }
 
-/* ===== Legend & buttons (tùy file của bạn) ===== */
+/* TTL badge (đếm ngược giây còn lại khi hold) */
+.seat .seat-ttl{
+    position:absolute;
+    right:6px;
+    bottom:6px;
+    font-size:.7rem;
+    line-height:1;
+    padding:2px 6px;
+    border-radius:999px;
+    background:#0000000f;
+    border:1px solid #00000014;
+}
+
+/* ===== Legend & buttons ===== */
 .legend{
     display:flex;
     align-items:center;
     gap:16px;
     font-size:.9rem;
+    flex-wrap: wrap;
 }
 .legend .dot{
     width:14px;
     height:14px;
     border-radius:50%;
-    margin-right:4px;
+    margin-right:6px;
     display:inline-block;
+    border:1px solid #0001;
 }
-.dot.free{
-    background:#74d680;
+.dot.free   {
+    background: var(--c-free-bd);
 }
-.dot.hold{
-    background:#ffca2c;
+.dot.hold   {
+    background: var(--c-hold-bd);
 }
-.dot.sold{
-    background:#f87171;
+.dot.myhold {
+    background: var(--c-myhold-bd);
 }
-.dot.chosen{
-    background:#0d6efd;
+.dot.sold   {
+    background: #f87171;
+}
+.dot.chosen {
+    background: var(--c-chosen-bd);
 }
 
 /* ===== Responsive ===== */

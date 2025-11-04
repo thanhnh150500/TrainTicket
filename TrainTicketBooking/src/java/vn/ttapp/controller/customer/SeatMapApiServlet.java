@@ -9,6 +9,7 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.ServletException;
 
 import java.io.IOException;
+import java.sql.*;
 import java.time.Instant;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -16,6 +17,7 @@ import java.util.regex.Pattern;
 import vn.ttapp.model.Trip;
 import vn.ttapp.model.Carriage;
 import vn.ttapp.model.SeatView;
+import vn.ttapp.model.User;
 import vn.ttapp.service.TripService;
 import vn.ttapp.service.CarriageService;
 import vn.ttapp.service.SeatService;
@@ -34,13 +36,17 @@ public class SeatMapApiServlet extends HttpServlet {
     /* ===== DTOs ===== */
     public static record SeatDto(
             Integer id, String code, Integer row, Integer col,
-            Long price, String status, String holdExpiresAt,
+            Long price,
+            String status, // FREE | LOCKED | LOCKED_BY_ME | BOOKED
+            Long remainSec, // còn bao nhiêu giây nếu đang lock
+            String holdExpiresAt, // ISO-8601 string nếu đang lock
+            Boolean lockedByMe, // true nếu do user hiện tại giữ
             Integer carriageId, String carriageCode,
             Integer seatClassId, String seatClassCode, String seatClassName) {
 
     }
 
-    // CHÚ Ý: JS đang cần có id + no + name
+    // JS đang cần có id + no + name
     public static record CoachDto(
             Integer id, Integer no, String name, Integer seatCount, List<Long> rangePrice) {
 
@@ -56,6 +62,12 @@ public class SeatMapApiServlet extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws IOException, ServletException {
 
+        // Luôn tắt cache để các tab nhận trạng thái mới nhất
+        resp.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+        resp.setHeader("Pragma", "no-cache");
+        resp.setDateHeader("Expires", 0L);
+        resp.setContentType("application/json; charset=UTF-8");
+
         String tripIdStr = req.getParameter("tripId");
         if (tripIdStr == null || tripIdStr.isBlank()) {
             resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing tripId");
@@ -70,18 +82,16 @@ public class SeatMapApiServlet extends HttpServlet {
                 return;
             }
 
-            /* ===== Lấy toa của train & gán số thứ tự ổn định ===== */
+            /* ===== Lấy danh sách toa và đánh số coachNo ổn định ===== */
             List<Carriage> cars = carService.findByTrain(trip.getTrainId());
             cars.sort(Comparator
                     .comparingInt((Carriage c) -> c.getSortOrder() != null ? c.getSortOrder() : 9999)
                     .thenComparing(Carriage::getCode, naturalComparator()));
-
             if (cars.isEmpty()) {
                 resp.sendError(HttpServletResponse.SC_NOT_FOUND, "No carriage for this trip");
                 return;
             }
 
-            // coachNo <-> carriageId
             Map<Integer, Integer> coachNo2CarId = new LinkedHashMap<>();
             Map<Integer, Integer> carId2CoachNo = new HashMap<>();
             int seq = 1;
@@ -91,7 +101,6 @@ public class SeatMapApiServlet extends HttpServlet {
                 seq++;
             }
 
-            /* ===== Chọn coach hiện tại từ query ===== */
             int coachNo = 1;
             String coachNoParam = req.getParameter("coachNo");
             if (coachNoParam != null && !coachNoParam.isBlank()) {
@@ -103,14 +112,10 @@ public class SeatMapApiServlet extends HttpServlet {
                 } catch (NumberFormatException ignore) {
                 }
             }
-            // chống NPE khi map không có key
-            Integer carriageIdObj = coachNo2CarId.get(coachNo);
-            if (carriageIdObj == null) {
-                carriageIdObj = coachNo2CarId.get(1);
-            }
+            Integer carriageIdObj = coachNo2CarId.getOrDefault(coachNo, coachNo2CarId.get(1));
             final int carriageId = carriageIdObj;
 
-            /* ===== Ghế của TOÀN BỘ train (availability theo trip) ===== */
+            /* ===== Lấy toàn bộ ghế (có metadata) ===== */
             int trainId = trip.getTrainId();
             List<SeatView> allSeatViews = seatService.getSeatMapWithAvailabilityForTrain(tripId, trainId);
             if (allSeatViews == null) {
@@ -133,13 +138,64 @@ public class SeatMapApiServlet extends HttpServlet {
                             .thenComparingInt(v -> v.seatId)
             );
 
-            /* ===== Build coaches DTO (có id, no, name, seatCount, rangePrice) ===== */
+            /* ===== Đọc trạng thái thật từ DB: BOOKED & LOCKED ===== */
+            UUID currentUser = currentUserId(req);
+
+            // booked seats
+            Set<Integer> bookedSeatIds = new HashSet<>();
+            // active locks: seatId -> (lockUserId, expiresAt)
+            Map<Integer, UUID> lockUserBySeat = new HashMap<>();
+            Map<Integer, Timestamp> lockExpireBySeat = new HashMap<>();
+
+            try (Connection cn = vn.ttapp.config.Db.getConnection()) {
+                // BOOKED
+                try (PreparedStatement ps = cn.prepareStatement("""
+                        SELECT bi.seat_id
+                        FROM dbo.BookingItem bi
+                        JOIN dbo.Booking b ON b.booking_id = bi.booking_id
+                        WHERE bi.trip_id = ? AND b.status IN ('PAID','CONFIRMED')
+                    """)) {
+                    ps.setInt(1, tripId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            bookedSeatIds.add(rs.getInt(1));
+                        }
+                    }
+                }
+
+                // LOCKED (còn hạn)
+                try (PreparedStatement ps = cn.prepareStatement("""
+                        SELECT L.seat_id, B.user_id, L.expires_at
+                        FROM dbo.SeatLock L
+                        LEFT JOIN dbo.Booking B ON B.booking_id = L.booking_id
+                        WHERE L.trip_id = ? AND L.status = 'LOCKED' AND L.expires_at > SYSUTCDATETIME()
+                    """)) {
+                    ps.setInt(1, tripId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            int seatId = rs.getInt(1);
+                            UUID uid = null;
+                            Object uo = rs.getObject(2);
+                            if (uo instanceof UUID) {
+                                uid = (UUID) uo;
+                            } else if (uo instanceof String s && !s.isBlank()) {
+                                try {
+                                    uid = UUID.fromString(s.trim());
+                                } catch (Exception ignore) {
+                                }
+                            }
+                            Timestamp exp = rs.getTimestamp(3);
+                            lockUserBySeat.put(seatId, uid);
+                            lockExpireBySeat.put(seatId, exp);
+                        }
+                    }
+                }
+            }
+
+            /* ===== Build coaches DTO ===== */
             List<CoachDto> coaches = new ArrayList<>(cars.size());
             for (Carriage c : cars) {
-                Integer no = carId2CoachNo.get(c.getCarriageId());
-                if (no == null) {
-                    no = 0; // fallback, tránh NPE unboxing
-                }
+                Integer no = carId2CoachNo.getOrDefault(c.getCarriageId(), 0);
                 long min = Long.MAX_VALUE, max = Long.MIN_VALUE;
                 int cnt = 0;
                 for (SeatView v : allSeatViews) {
@@ -158,21 +214,37 @@ public class SeatMapApiServlet extends HttpServlet {
                 }
                 List<Long> range = (min == Long.MAX_VALUE) ? List.of() : List.of(min, max);
                 String name = (c.getCode() != null && !c.getCode().isBlank()) ? c.getCode() : ("Toa " + no);
-                coaches.add(new CoachDto(
-                        c.getCarriageId(), // id
-                        no, // no
-                        name, // name
-                        cnt, // seatCount
-                        range // rangePrice
-                ));
+                coaches.add(new CoachDto(c.getCarriageId(), no, name, cnt, range));
             }
 
-            /* ===== seats[]: từ allSeatViews ===== */
+            /* ===== seats[] hợp nhất trạng thái ===== */
             List<SeatDto> seats = new ArrayList<>(allSeatViews.size());
             Map<String, Integer> seatClassCountForCurrentCoach = new HashMap<>();
 
+            long nowMs = System.currentTimeMillis();
+
             for (SeatView v : allSeatViews) {
-                String status = v.available ? "FREE" : (v.lockExpiresAt != null ? "HELD" : "SOLD");
+                String status;
+                boolean lockedByMe = false;
+                Long remainSec = null;
+                String holdExpiresAt = null;
+
+                if (bookedSeatIds.contains(v.seatId)) {
+                    status = "BOOKED";
+                } else if (lockExpireBySeat.containsKey(v.seatId)) {
+                    Timestamp exp = lockExpireBySeat.get(v.seatId);
+                    UUID lockUser = lockUserBySeat.get(v.seatId);
+                    lockedByMe = (currentUser != null && currentUser.equals(lockUser));
+                    status = lockedByMe ? "LOCKED_BY_ME" : "LOCKED";
+                    if (exp != null) {
+                        long rem = Math.max(0L, (exp.getTime() - nowMs) / 1000L);
+                        remainSec = rem;
+                        holdExpiresAt = exp.toInstant().toString();
+                    }
+                } else {
+                    status = "FREE";
+                }
+
                 seats.add(new SeatDto(
                         v.seatId,
                         v.seatCode,
@@ -180,13 +252,16 @@ public class SeatMapApiServlet extends HttpServlet {
                         v.colNo,
                         v.price != null ? v.price.longValue() : null,
                         status,
-                        v.lockExpiresAt != null ? v.lockExpiresAt.toInstant().toString() : null,
+                        remainSec,
+                        holdExpiresAt,
+                        lockedByMe,
                         v.carriageId,
                         v.carriageCode,
                         v.seatClassId,
                         v.seatClassCode,
                         v.seatClassName
                 ));
+
                 if (v.carriageId == carriageId && v.seatClassName != null) {
                     seatClassCountForCurrentCoach.merge(v.seatClassName, 1, Integer::sum);
                 }
@@ -214,32 +289,45 @@ public class SeatMapApiServlet extends HttpServlet {
             coach.put("seatClass", seatClassForCoach);
 
             /* ===== Xuất JSON ===== */
-            Payload out = new Payload(
-                    tripId, coach, seats, coaches, Instant.now().toString()
-            );
-
-            resp.setContentType("application/json; charset=UTF-8");
-            resp.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
-            resp.setHeader("Pragma", "no-cache");
-            resp.setDateHeader("Expires", 0L);
+            Payload out = new Payload(tripId, coach, seats, coaches, Instant.now().toString());
             mapper.writeValue(resp.getWriter(), out);
 
         } catch (NumberFormatException e) {
             resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid tripId format");
         } catch (Exception e) {
-            // log thật rõ để bắt 500 nhanh
-            e.printStackTrace(); // xem trong catalina.out
+            e.printStackTrace(); // log để debug
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            resp.setContentType("application/json; charset=UTF-8");
             mapper.writeValue(resp.getWriter(), Map.of(
                     "ok", false,
                     "error", "Internal error",
-                    "message", e.getClass().getSimpleName() + ": " + e.getMessage()
+                    "message", e.getClass().getSimpleName() + ": " + (e.getMessage() == null ? "" : e.getMessage())
             ));
         }
     }
 
-    /* ===== comparators ===== */
+    /* ===== helpers ===== */
+    private static UUID currentUserId(HttpServletRequest req) {
+        HttpSession ss = req.getSession(false);
+        if (ss == null) {
+            return null;
+        }
+        Object au = ss.getAttribute("authUser");
+        if (au instanceof User u && u.getUserId() != null) {
+            return u.getUserId();
+        }
+        Object uid = ss.getAttribute("userId");
+        if (uid instanceof UUID) {
+            return (UUID) uid;
+        }
+        if (uid instanceof String s && !s.isBlank()) {
+            try {
+                return UUID.fromString(s.trim());
+            } catch (Exception ignore) {
+            }
+        }
+        return null;
+    }
+
     private static Comparator<String> naturalComparator() {
         final Pattern p = Pattern.compile("(\\d+)|(\\D+)");
         return (a, b) -> {

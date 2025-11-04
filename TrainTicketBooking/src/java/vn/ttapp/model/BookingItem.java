@@ -3,8 +3,7 @@ package vn.ttapp.model;
 import java.math.BigDecimal;
 
 /**
- * BookingItem model — khớp với bảng dbo.BookingItem trong TrainDB Đại diện cho
- * 1 ghế cụ thể được đặt trong 1 chuyến (trip)
+ * Mô hình chi tiết ghế trong đơn Booking.
  */
 public class BookingItem {
 
@@ -18,12 +17,13 @@ public class BookingItem {
 
     private BigDecimal basePrice = BigDecimal.ZERO;
     private BigDecimal discountAmount = BigDecimal.ZERO;
-    private BigDecimal amount = BigDecimal.ZERO;  // basePrice - discount
+    private BigDecimal amount = BigDecimal.ZERO;
 
-    // --------- Optional fields for UI display ---------
-    private String seatCode;       // Mã ghế hiển thị "C02-05A"
-    private String seatClassName;  // "Ghế mềm điều hòa"
-    private String passengerName;  // tên hành khách (join Passenger)
+    // --------- Optional fields cho hiển thị UI ---------
+    private String seatCode;        // Mã ghế hiển thị "C02-05A"
+    private String carriageCode;    // Toa "C02"
+    private String seatClassName;   // "Ghế mềm điều hòa"
+    private String passengerName;   // Tên hành khách
 
     // ====== Constructors ======
     public BookingItem() {
@@ -129,6 +129,14 @@ public class BookingItem {
         this.seatCode = seatCode;
     }
 
+    public String getCarriageCode() {
+        return carriageCode;
+    }
+
+    public void setCarriageCode(String carriageCode) {
+        this.carriageCode = carriageCode;
+    }
+
     public String getSeatClassName() {
         return seatClassName;
     }
@@ -145,7 +153,6 @@ public class BookingItem {
         this.passengerName = passengerName;
     }
 
-    // ====== Helper ======
     @Override
     public String toString() {
         return "BookingItem{"
@@ -160,6 +167,7 @@ public class BookingItem {
                 + ", discountAmount=" + discountAmount
                 + ", amount=" + amount
                 + ", seatCode='" + seatCode + '\''
+                + ", carriageCode='" + carriageCode + '\''
                 + ", seatClassName='" + seatClassName + '\''
                 + ", passengerName='" + passengerName + '\''
                 + '}';

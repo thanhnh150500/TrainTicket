@@ -1,7 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Context path="">
     <!-- JDBC DataSource: jdbc/TrainDB -->
-    <Resource auth="Container" driverClassName="com.microsoft.sqlserver.jdbc.SQLServerDriver" factory="org.apache.tomcat.jdbc.pool.DataSourceFactory" initialSize="5" logAbandoned="true" maxIdle="10" maxTotal="30" maxWaitMillis="10000" minEvictableIdleTimeMillis="600000" minIdle="5" name="jdbc/TrainDB" password="admin" removeAbandonedOnBorrow="true" removeAbandonedTimeout="60" testOnBorrow="true" testWhileIdle="true" timeBetweenEvictionRunsMillis="30000" type="javax.sql.DataSource" url="jdbc:sqlserver://localhost:1433;databaseName=TrainDB;encrypt=true;trustServerCertificate=true" username="bean2k" validationQuery="SELECT 1" validationQueryTimeout="5"/>
+    <Resource auth="Container" 
+              driverClassName="com.microsoft.sqlserver.jdbc.SQLServerDriver" 
+              factory="org.apache.tomcat.jdbc.pool.DataSourceFactory" 
+              initialSize="5" logAbandoned="true" 
+              maxIdle="10" 
+              maxTotal="30" 
+              maxWaitMillis="10000" 
+              minEvictableIdleTimeMillis="600000" 
+              minIdle="5" name="jdbc/TrainDB" 
+              password="admin" 
+              removeAbandonedOnBorrow="true" 
+              removeAbandonedTimeout="60" 
+              testOnBorrow="true" 
+              testWhileIdle="true" 
+              timeBetweenEvictionRunsMillis="30000" 
+              type="javax.sql.DataSource" 
+              url="jdbc:sqlserver://localhost:1433;databaseName=TrainDB;encrypt=true;trustServerCertificate=true" 
+              username="bean2k" 
+              validationQuery="SELECT 1" 
+              validationQueryTimeout="5"/>
     <Resource
         name="mail/Session" 
         auth="Container"
@@ -16,3 +35,4 @@
         mail.smtp.user="your_email@gmail.com" 
         />
 </Context>
+

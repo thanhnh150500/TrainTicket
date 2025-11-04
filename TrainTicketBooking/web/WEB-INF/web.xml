@@ -51,14 +51,6 @@
         <servlet-name>RegisterServlet</servlet-name>
         <url-pattern>/auth/register</url-pattern>
     </servlet-mapping>
-    <servlet>
-        <servlet-name>LogoutServlet</servlet-name>
-        <servlet-class>vn.ttapp.controller.auth.LogoutServlet</servlet-class>
-    </servlet>
-    <servlet-mapping>
-        <servlet-name>LogoutServlet</servlet-name>
-        <url-pattern>/auth/logout</url-pattern>
-    </servlet-mapping>
     <display-name>TrainTicketBooking</display-name>
     <filter>
         <filter-name>AuthFilter</filter-name>

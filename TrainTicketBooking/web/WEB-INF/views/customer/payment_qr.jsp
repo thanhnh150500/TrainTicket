@@ -24,14 +24,30 @@
                 <div class="row g-3 mt-2">
                     <div class="col-md-5">
                         <div class="qr-box text-center">
-                            <!-- Ưu tiên url ảnh từ server; nếu chưa có, fallback tạo QR từ qrData -->
-                            <c:set var="amountVnd" value="${amount}" />
-                            <c:set var="dataStr" value="${not empty qrData ? qrData : (bankCode += '|' += accountNo += '|' += amountVnd += '|' += memo)}" />
-                            <img class="img-fluid"
-                                 src="${empty qrImageUrl ?
-                                        ('https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=' += fn:escapeXml(dataStr))
-                                        : qrImageUrl}"
-                                 alt="QR chuyển khoản">
+                            <!-- 1) dataStr: ưu tiên qrData, nếu không có thì ghép bankCode|accountNo|amount|memo -->
+                            <c:choose>
+                                <c:when test="${not empty qrData}">
+                                    <c:set var="dataStr" value="${qrData}" />
+                                </c:when>
+                                <c:otherwise>
+                                    <c:set var="dataStr" value="${bankCode}|${accountNo}|${amount}|${memo}" />
+                                </c:otherwise>
+                            </c:choose>
+
+                            <!-- 2) Ảnh QR: dùng ảnh server nếu có; nếu không tạo URL động -->
+                            <c:choose>
+                                <c:when test="${not empty qrImageUrl}">
+                                    <img class="img-fluid" src="${qrImageUrl}" alt="QR chuyển khoản">
+                                </c:when>
+                                <c:otherwise>
+                                    <c:url var="qrUrl" value="https://api.qrserver.com/v1/create-qr-code/">
+                                        <c:param name="size" value="260x260" />
+                                        <c:param name="data" value="${dataStr}" />
+                                    </c:url>
+                                    <img class="img-fluid" src="${qrUrl}" alt="QR chuyển khoản">
+                                </c:otherwise>
+                            </c:choose>
+
                             <div class="small text-muted mt-2">Quét mã QR để thanh toán nhanh</div>
                         </div>
                     </div>
@@ -39,26 +55,39 @@
                     <div class="col-md-7">
                         <div class="row gy-2">
                             <div class="col-12">
-                                <div class="kv"><span class="k">Ngân hàng</span><span class="v"><c:out value="${bankName}"/></span></div>
+                                <div class="kv">
+                                    <span class="k">Ngân hàng</span>
+                                    <span class="v"><c:out value="${bankName}" /></span>
+                                </div>
                             </div>
+
                             <div class="col-12 d-flex align-items-center">
                                 <div class="kv me-2 flex-grow-1">
-                                    <span class="k">Số tài khoản</span><span class="v" id="accNo"><c:out value="${accountNo}"/></span>
+                                    <span class="k">Số tài khoản</span>
+                                    <span class="v" id="accNo"><c:out value="${accountNo}" /></span>
                                 </div>
                                 <button class="btn btn-sm btn-outline-secondary" data-copy="#accNo">Sao chép</button>
                             </div>
+
                             <div class="col-12">
-                                <div class="kv"><span class="k">Người thụ hưởng</span><span class="v"><c:out value="${accountName}"/></span></div>
+                                <div class="kv">
+                                    <span class="k">Người thụ hưởng</span>
+                                    <span class="v"><c:out value="${accountName}" /></span>
+                                </div>
                             </div>
+
                             <div class="col-12 d-flex align-items-center">
                                 <div class="kv me-2 flex-grow-1">
-                                    <span class="k">Số tiền</span><span class="v" id="amt"><c:out value="${amount}"/> đ</span>
+                                    <span class="k">Số tiền</span>
+                                    <span class="v" id="amt"><c:out value="${amount}" /> đ</span>
                                 </div>
                                 <button class="btn btn-sm btn-outline-secondary" data-copy="#amt">Sao chép</button>
                             </div>
+
                             <div class="col-12 d-flex align-items-center">
                                 <div class="kv me-2 flex-grow-1">
-                                    <span class="k">Nội dung</span><span class="v" id="memo"><c:out value="${memo}"/></span>
+                                    <span class="k">Nội dung</span>
+                                    <span class="v" id="memo"><c:out value="${memo}" /></span>
                                 </div>
                                 <button class="btn btn-sm btn-outline-secondary" data-copy="#memo">Sao chép</button>
                             </div>
@@ -79,7 +108,7 @@
 
         <script>
             window.TT_QR = {
-                countdownSec:${empty countdownSec ? 300 : countdownSec},
+                countdownSec: ${empty countdownSec ? 300 : countdownSec},
                 bookingId: '${bookingId}'
             };
         </script>
