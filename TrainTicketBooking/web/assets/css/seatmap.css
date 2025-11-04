@@ -13,6 +13,7 @@ body {
     padding: 8px 2px 2px;
     display:flex;
 }
+
 .mini-cars::-webkit-scrollbar {
     height: 6px;
 }
@@ -20,6 +21,14 @@ body {
     background: #d0d7de;
     border-radius: 6px;
 }
+
+.seat-grid{
+  display:grid;
+  grid-template-columns: repeat(var(--cols, 8), minmax(40px,1fr));
+  justify-content:center;
+  gap:8px;
+}
+
 .mini-car {
     display: inline-flex;
     align-items: center;

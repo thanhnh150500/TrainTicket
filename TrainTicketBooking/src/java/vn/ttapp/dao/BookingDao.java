@@ -1,146 +1,130 @@
 package vn.ttapp.dao;
 
+import vn.ttapp.config.Db;
 import vn.ttapp.model.Booking;
 import vn.ttapp.model.BookingItem;
-import vn.ttapp.model.SeatHold;
 
 import java.math.BigDecimal;
 import java.sql.*;
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.UUID;
-import vn.ttapp.config.Db;
 
-public class BookingDao {
+public interface BookingDao {
 
-    private String genBookingCode() {
-        String d = java.time.LocalDate.now().toString().replace("-", "");
-        String rnd = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
-        return "TT" + d + rnd;
-    }
-
-    /**
-     * Tạo booking DRAFT + items và gắn các SeatHold vào booking (booking_id)
-     * trong 1 transaction.
-     */
-    public Booking createDraftWithItems(
+    Booking createDraftWithItems(
             String contactEmail,
             String contactPhone,
             int tripId,
             BigDecimal subtotal,
-            List<BookingItem> items,
-            List<SeatHold> holds
-    ) throws Exception {
+            List<BookingItem> items
+    ) throws Exception;
 
-        try (Connection cn = Db.getConnection()) {
-            cn.setAutoCommit(false);
+    Booking findById(Long bookingId) throws Exception;
+
+    public static class Impl implements BookingDao {
+
+        @Override
+        public Booking createDraftWithItems(String contactEmail, String contactPhone,
+                int tripId, BigDecimal subtotal, List<BookingItem> items)
+                throws Exception {
+
+            Connection cn = null;
+            boolean ok = false;
             try {
-                String bookingCode = genBookingCode();
-                int bookingId;
+                cn = Db.getConnection();
+                cn.setAutoCommit(false);
 
                 // 1) Insert Booking (DRAFT)
-                try (PreparedStatement ps = cn.prepareStatement(
-                        "INSERT INTO Booking(booking_code, trip_id, buyer_email, buyer_phone, "
-                        + "subtotal, discount, total_amount, status, created_at) "
-                        + "VALUES (?, ?, ?, ?, ?, 0, ?, 'DRAFT', SYSUTCDATETIME()); "
-                        + "SELECT CAST(SCOPE_IDENTITY() AS INT);")) {
-                    ps.setString(1, bookingCode);
-                    ps.setInt(2, tripId);
-                    ps.setString(3, contactEmail);
-                    ps.setString(4, contactPhone);
-                    ps.setInt(5, subtotal.intValue());  // nếu cột là DECIMAL thì chuyển sang setBigDecimal
-                    ps.setInt(6, subtotal.intValue());
-                    try (ResultSet rs = ps.executeQuery()) {
+                long bookingId;
+                try (PreparedStatement ps = cn.prepareStatement("""
+                    INSERT INTO dbo.Booking (user_id, contact_email, contact_phone, status,
+                                             subtotal, discount_total, total_amount)
+                    VALUES (NULL, ?, ?, 'DRAFT', ?, 0, ?)
+                """, Statement.RETURN_GENERATED_KEYS)) {
+                    ps.setString(1, contactEmail);
+                    ps.setString(2, contactPhone);
+                    ps.setBigDecimal(3, subtotal);
+                    ps.setBigDecimal(4, subtotal);
+                    ps.executeUpdate();
+                    try (ResultSet rs = ps.getGeneratedKeys()) {
                         rs.next();
-                        bookingId = rs.getInt(1);
+                        bookingId = rs.getLong(1);
                     }
                 }
 
-                // 2) Insert Items -> BookingSeat
-                try (PreparedStatement ps = cn.prepareStatement(
-                        "INSERT INTO BookingSeat(booking_id, trip_id, carriage_id, seat_id, seat_code, seat_class, price) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?)")) {
+                // 2) Insert BookingItem
+                try (PreparedStatement ps = cn.prepareStatement("""
+                    INSERT INTO dbo.BookingItem(booking_id, trip_id, seat_id, seat_class_id,
+                                                segment, passenger_id, base_price, discount_amount, amount)
+                    VALUES (?, ?, ?, ?, ?, NULL, ?, 0, ?)
+                """)) {
                     for (BookingItem bi : items) {
-                        ps.setInt(1, bookingId);
+                        ps.setLong(1, bookingId);
                         ps.setInt(2, bi.getTripId());
-                        // nếu bạn chưa có carriageId trong BookingItem, có thể set NULL bằng:
-                        if (bi.getSeatCode() != null) {
-                            // carriage_id: nếu chưa có, setNull
-                            ps.setNull(3, Types.INTEGER);
-                        } else {
-                            ps.setNull(3, Types.INTEGER);
-                        }
-                        ps.setInt(4, bi.getSeatId());
-                        ps.setString(5, bi.getSeatCode());
-                        ps.setString(6, String.valueOf(bi.getSeatClassId())); // hoặc truyền tên hạng nếu bạn lưu string
-                        ps.setInt(7, bi.getAmount().intValue()); // nếu cột price là DECIMAL -> dùng setBigDecimal
+                        ps.setInt(3, bi.getSeatId());
+                        ps.setInt(4, bi.getSeatClassId());
+                        ps.setString(5, bi.getSegment());
+                        ps.setBigDecimal(6, bi.getBasePrice());
+                        ps.setBigDecimal(7, bi.getAmount());
                         ps.addBatch();
                     }
                     ps.executeBatch();
                 }
 
-                // 3) Gắn các hold vào booking (tránh dùng lại)
-                if (holds != null && !holds.isEmpty()) {
-                    try (PreparedStatement ps = cn.prepareStatement(
-                            "UPDATE SeatHold SET booking_id=? "
-                            + "WHERE seat_hold_id=? AND booking_id IS NULL")) {
-                        for (SeatHold h : holds) {
-                            ps.setInt(1, bookingId);
-                            ps.setInt(2, h.seatHoldId);
-                            ps.addBatch();
-                        }
-                        ps.executeBatch();
-                    }
-                }
-
                 cn.commit();
+                ok = true;
 
-                // 4) Map kết quả
+                // 3) Build Booking model trả về
                 Booking b = new Booking();
-                b.bookingId = bookingId;
-                b.bookingCode = bookingCode;
-                b.tripId = tripId;
-                b.buyerEmail = contactEmail;
-                b.buyerPhone = contactPhone;
-                b.subtotal = subtotal.intValue();
-                b.discount = 0;
-                b.totalAmount = subtotal.intValue();
-                b.status = vn.ttapp.model.BookingStatus.PENDING; // hoặc giữ DRAFT tùy flow
-                b.createdAt = OffsetDateTime.now();
+                b.setBookingId(bookingId);
+                b.setContactEmail(contactEmail);
+                b.setContactPhone(contactPhone);
+                b.setSubtotal(subtotal);
+                b.setDiscountTotal(BigDecimal.ZERO);
+                b.setTotalAmount(subtotal);
+                b.setStatus("DRAFT");
+                b.setCreatedAt(OffsetDateTime.now());
                 return b;
 
             } catch (Exception ex) {
-                cn.rollback();
+                if (cn != null) {
+                    cn.rollback();
+                }
                 throw ex;
             } finally {
-                cn.setAutoCommit(true);
+                if (cn != null) {
+                    try {
+                        cn.setAutoCommit(true);
+                        cn.close();
+                    } catch (Exception ignore) {
+                    }
+                }
             }
         }
-    }
 
-    public Booking findById(Long bookingId) throws SQLException {
-        try (Connection cn = Db.getConnection(); PreparedStatement ps = cn.prepareStatement(
-                "SELECT booking_id, booking_code, trip_id, buyer_name, buyer_email, buyer_phone, "
-                + "subtotal, discount, total_amount, status, created_at "
-                + "FROM Booking WHERE booking_id=?")) {
-            ps.setLong(1, bookingId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) {
-                    return null;
+        @Override
+        public Booking findById(Long bookingId) throws Exception {
+            String sql = """
+                SELECT booking_id, contact_email, contact_phone, subtotal, discount_total,
+                       total_amount, status, created_at, updated_at
+                FROM dbo.Booking WHERE booking_id = ?
+            """;
+            try (Connection cn = Db.getConnection(); PreparedStatement ps = cn.prepareStatement(sql)) {
+                ps.setLong(1, bookingId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        return null;
+                    }
+                    Booking b = new Booking();
+                    b.setBookingId(rs.getLong("booking_id"));
+                    b.setContactEmail(rs.getString("contact_email"));
+                    b.setContactPhone(rs.getString("contact_phone"));
+                    b.setSubtotal(rs.getBigDecimal("subtotal"));
+                    b.setDiscountTotal(rs.getBigDecimal("discount_total"));
+                    b.setTotalAmount(rs.getBigDecimal("total_amount"));
+                    b.setStatus(rs.getString("status"));
+                    return b;
                 }
-                Booking b = new Booking();
-                b.bookingId = rs.getInt("booking_id");
-                b.bookingCode = rs.getString("booking_code");
-                b.tripId = rs.getInt("trip_id");
-                b.buyerName = rs.getString("buyer_name");
-                b.buyerEmail = rs.getString("buyer_email");
-                b.buyerPhone = rs.getString("buyer_phone");
-                b.subtotal = rs.getInt("subtotal");
-                b.discount = rs.getInt("discount");
-                b.totalAmount = rs.getInt("total_amount");
-                b.status = vn.ttapp.model.BookingStatus.valueOf(rs.getString("status"));
-                b.createdAt = rs.getObject("created_at", java.time.OffsetDateTime.class);
-                return b;
             }
         }
     }

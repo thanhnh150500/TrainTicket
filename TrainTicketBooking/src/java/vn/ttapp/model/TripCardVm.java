@@ -5,15 +5,19 @@ import java.time.LocalDateTime;
 
 public class TripCardVm {
 
-    public int tripId;
-    public String trainCode;
-    public LocalDateTime departTime;
-    public LocalDateTime arriveTime;
-    public int durationMin;
-    public int availableSeats;
-    public BigDecimal minPrice;
+    // Để EL/JSP ổn định, dùng private + getter/setter
+    private int tripId;
+    private String trainCode;
+    private LocalDateTime departTime;
+    private LocalDateTime arriveTime;
+    private int durationMin;
+    private int availableSeats;
+    private BigDecimal minPrice;
 
-    // getter + setter
+    // NEW: tên ga
+    private String originName;
+    private String destName;
+
     public int getTripId() {
         return tripId;
     }
@@ -68,5 +72,21 @@ public class TripCardVm {
 
     public void setMinPrice(BigDecimal minPrice) {
         this.minPrice = minPrice;
+    }
+
+    public String getOriginName() {
+        return originName;
+    }
+
+    public void setOriginName(String originName) {
+        this.originName = originName;
+    }
+
+    public String getDestName() {
+        return destName;
+    }
+
+    public void setDestName(String destName) {
+        this.destName = destName;
     }
 }

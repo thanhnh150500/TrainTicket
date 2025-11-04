@@ -1,17 +1,9 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package vn.ttapp.dao;
 
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
-/**
- *
- * @author New User
- */
 public class SearchContext implements Serializable {
 
     private String tripType;          // ONEWAY / ROUNDTRIP
@@ -22,6 +14,9 @@ public class SearchContext implements Serializable {
     private LocalDate departDate;
     private LocalTime departTime;     // optional
     private LocalDate returnDate;     // optional
+
+    // 👇 THÊM MỚI
+    private Integer pax = 1;          // mặc định 1 khách
 
     // ===== GETTER / SETTER =====
     public String getTripType() {
@@ -86,5 +81,23 @@ public class SearchContext implements Serializable {
 
     public void setReturnDate(LocalDate returnDate) {
         this.returnDate = returnDate;
+    }
+
+    // 👇 GETTER/SETTER CHO PAX
+    public Integer getPax() {
+        return pax;
+    }
+
+    public void setPax(Integer pax) {
+        this.pax = (pax == null || pax < 1) ? 1 : pax;
+    }
+
+    // (tuỳ chọn) alias tiện cho JSP/JS
+    public Integer getOriginId() {
+        return originStationId;
+    }
+
+    public Integer getDestId() {
+        return destStationId;
     }
 }

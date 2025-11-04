@@ -2,20 +2,45 @@ package vn.ttapp.model;
 
 import java.math.BigDecimal;
 
+/**
+ * BookingItem model — khớp với bảng dbo.BookingItem trong TrainDB Đại diện cho
+ * 1 ghế cụ thể được đặt trong 1 chuyến (trip)
+ */
 public class BookingItem {
 
-    private Long bookingItemId; // identity (nullable khi chưa insert)
-    private Long bookingId;     // set sau khi insert header
-    private Integer tripId;
-    private Integer seatId;
-    private Integer seatClassId;
-    private String seatCode;
-    private String segment;       // "OUTBOUND" | "RETURN"
-    private BigDecimal basePrice = BigDecimal.ZERO; // giá gốc theo fare
-    private BigDecimal discountAmount = BigDecimal.ZERO;
-    private BigDecimal amount = BigDecimal.ZERO; // basePrice - discount
+    private Long bookingItemId;    // BIGINT IDENTITY
+    private Long bookingId;        // FK → Booking
+    private Integer tripId;        // FK → Trip
+    private Integer seatId;        // FK → Seat
+    private Integer seatClassId;   // FK → SeatClass
+    private Long passengerId;      // FK → Passenger (nullable)
+    private String segment;        // "OUTBOUND" | "RETURN"
 
-    // --- getters/setters ---
+    private BigDecimal basePrice = BigDecimal.ZERO;
+    private BigDecimal discountAmount = BigDecimal.ZERO;
+    private BigDecimal amount = BigDecimal.ZERO;  // basePrice - discount
+
+    // --------- Optional fields for UI display ---------
+    private String seatCode;       // Mã ghế hiển thị "C02-05A"
+    private String seatClassName;  // "Ghế mềm điều hòa"
+    private String passengerName;  // tên hành khách (join Passenger)
+
+    // ====== Constructors ======
+    public BookingItem() {
+    }
+
+    public BookingItem(Long bookingId, Integer tripId, Integer seatId, Integer seatClassId,
+            String segment, BigDecimal basePrice) {
+        this.bookingId = bookingId;
+        this.tripId = tripId;
+        this.seatId = seatId;
+        this.seatClassId = seatClassId;
+        this.segment = segment;
+        this.basePrice = basePrice;
+        this.amount = basePrice;
+    }
+
+    // ====== Getters & Setters ======
     public Long getBookingItemId() {
         return bookingItemId;
     }
@@ -56,12 +81,12 @@ public class BookingItem {
         this.seatClassId = seatClassId;
     }
 
-    public String getSeatCode() {
-        return seatCode;
+    public Long getPassengerId() {
+        return passengerId;
     }
 
-    public void setSeatCode(String seatCode) {
-        this.seatCode = seatCode;
+    public void setPassengerId(Long passengerId) {
+        this.passengerId = passengerId;
     }
 
     public String getSegment() {
@@ -94,5 +119,49 @@ public class BookingItem {
 
     public void setAmount(BigDecimal amount) {
         this.amount = amount;
+    }
+
+    public String getSeatCode() {
+        return seatCode;
+    }
+
+    public void setSeatCode(String seatCode) {
+        this.seatCode = seatCode;
+    }
+
+    public String getSeatClassName() {
+        return seatClassName;
+    }
+
+    public void setSeatClassName(String seatClassName) {
+        this.seatClassName = seatClassName;
+    }
+
+    public String getPassengerName() {
+        return passengerName;
+    }
+
+    public void setPassengerName(String passengerName) {
+        this.passengerName = passengerName;
+    }
+
+    // ====== Helper ======
+    @Override
+    public String toString() {
+        return "BookingItem{"
+                + "bookingItemId=" + bookingItemId
+                + ", bookingId=" + bookingId
+                + ", tripId=" + tripId
+                + ", seatId=" + seatId
+                + ", seatClassId=" + seatClassId
+                + ", passengerId=" + passengerId
+                + ", segment='" + segment + '\''
+                + ", basePrice=" + basePrice
+                + ", discountAmount=" + discountAmount
+                + ", amount=" + amount
+                + ", seatCode='" + seatCode + '\''
+                + ", seatClassName='" + seatClassName + '\''
+                + ", passengerName='" + passengerName + '\''
+                + '}';
     }
 }

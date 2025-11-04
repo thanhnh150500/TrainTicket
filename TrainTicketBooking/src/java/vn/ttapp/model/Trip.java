@@ -6,10 +6,6 @@ package vn.ttapp.model;
 
 import java.time.LocalDateTime;
 
-/**
- *
- * @author dotri
- */
 public class Trip {
     public Integer tripId;
     public Integer routeId;

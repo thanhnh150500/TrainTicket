@@ -26,9 +26,9 @@ public class TripListDao {
 
         try (Connection cn = Db.getConnection()) {
 
-            // 1) Tìm route_id theo cặp ga
             Integer routeId = null;
-            String findRouteSql = "SELECT route_id FROM dbo.[Route] WHERE origin_station_id=? AND dest_station_id=?";
+            String findRouteSql = "SELECT route_id FROM dbo.[Route] " +
+                                  "WHERE origin_station_id=? AND dest_station_id=?";
             try (PreparedStatement ps = cn.prepareStatement(findRouteSql)) {
                 ps.setInt(1, originStationId);
                 ps.setInt(2, destStationId);
@@ -42,16 +42,14 @@ public class TripListDao {
                 return Collections.emptyList();
             }
 
-            // 2) Tính time window [start, end)
             LocalDateTime start = departDate.atStartOfDay();
             if (departAfterOrNull != null) {
                 start = start.withHour(departAfterOrNull.getHour())
-                        .withMinute(departAfterOrNull.getMinute())
-                        .withSecond(0).withNano(0);
+                             .withMinute(departAfterOrNull.getMinute())
+                             .withSecond(0).withNano(0);
             }
             LocalDateTime end = departDate.plusDays(1).atStartOfDay();
 
-            // 3) Truy vấn chuyến + ghế còn lại + giá thấp nhất
             String sql = """
                 WITH seats_total AS (
                     SELECT c.train_id, COUNT(*) AS total
@@ -77,6 +75,8 @@ public class TripListDao {
                     tr.code                        AS train_code,
                     t.depart_at,
                     t.arrive_at,
+                    so.name                        AS origin_name,
+                    sd.name                        AS dest_name,
                     ISNULL(st.total,0)             AS total_seats,
                     ISNULL(lk.cnt,0)               AS locked_cnt,
                     ISNULL(bk.cnt,0)               AS booked_cnt,
@@ -89,6 +89,9 @@ public class TripListDao {
                     )                               AS price_from
                 FROM dbo.Trip t
                 JOIN dbo.Train tr        ON tr.train_id = t.train_id
+                JOIN dbo.[Route] r       ON r.route_id = t.route_id
+                JOIN dbo.Station so      ON so.station_id = r.origin_station_id
+                JOIN dbo.Station sd      ON sd.station_id = r.dest_station_id
                 LEFT JOIN seats_total st ON st.train_id = t.train_id
                 LEFT JOIN locked lk      ON lk.trip_id = t.trip_id
                 LEFT JOIN booked bk      ON bk.trip_id = t.trip_id
@@ -100,7 +103,7 @@ public class TripListDao {
 
             List<TripCardVm> out = new ArrayList<>();
             try (PreparedStatement ps = cn.prepareStatement(sql)) {
-                // Giá áp theo ngày đi (chỉ cần Date)
+                // Giá áp theo ngày đi (Date)
                 ps.setDate(1, java.sql.Date.valueOf(departDate));
                 ps.setDate(2, java.sql.Date.valueOf(departDate));
                 // Route + time window
@@ -112,27 +115,30 @@ public class TripListDao {
                     while (rs.next()) {
                         Timestamp dts = rs.getTimestamp("depart_at");
                         Timestamp ats = rs.getTimestamp("arrive_at");
-                        // Null-safe: bỏ bản ghi thiếu thời gian
                         if (dts == null || ats == null) {
+                            // Bỏ bản ghi thiếu thời gian
                             continue;
                         }
 
                         LocalDateTime departAt = dts.toLocalDateTime();
                         LocalDateTime arriveAt = ats.toLocalDateTime();
 
-                        int total = rs.getInt("total_seats");
+                        int total  = rs.getInt("total_seats");
                         int locked = rs.getInt("locked_cnt");
                         int booked = rs.getInt("booked_cnt");
                         int remain = Math.max(0, total - locked - booked);
 
                         TripCardVm vm = new TripCardVm();
-                        vm.tripId = rs.getInt("trip_id");
-                        vm.trainCode = rs.getString("train_code");
-                        vm.departTime = departAt;
-                        vm.arriveTime = arriveAt;
-                        vm.durationMin = (int) Duration.between(departAt, arriveAt).toMinutes();
-                        vm.availableSeats = remain;
-                        vm.minPrice = rs.getBigDecimal("price_from"); // có thể null
+                        vm.setTripId(rs.getInt("trip_id"));
+                        vm.setTrainCode(rs.getString("train_code"));
+                        vm.setDepartTime(departAt);
+                        vm.setArriveTime(arriveAt);
+                        vm.setDurationMin((int) Duration.between(departAt, arriveAt).toMinutes());
+                        vm.setAvailableSeats(remain);
+                        vm.setMinPrice(rs.getBigDecimal("price_from")); // có thể null
+
+                        vm.setOriginName(rs.getString("origin_name"));
+                        vm.setDestName(rs.getString("dest_name"));
 
                         out.add(vm);
                     }
@@ -143,36 +149,26 @@ public class TripListDao {
         }
     }
 
-    /**
-     * Alias tiện dùng trong Servlet khác.
-     */
     public List<TripCardVm> queryTripsForDate(int originId, int destId, LocalDate viewDate)
             throws SQLException {
         return listTripsByRouteAndDay(originId, destId, viewDate, null);
     }
 
-    /**
-     * Sinh dải ngày cho UI: từ (viewDate - 1) đến (viewDate + 7). Đồng thời set
-     * prev/next URL lên request để dùng cho nút điều hướng.
-     */
     public List<DayTabVm> buildDayTabs(HttpServletRequest req, LocalDate date,
-            int originId, int destId) {
+                                       int originId, int destId) {
         String ctx = req.getContextPath();
         List<DayTabVm> days = new ArrayList<>();
 
-        // hiển thị từ (date - 1) đến (date + 7)
         for (int i = -1; i <= 7; i++) {
             LocalDate d = date.plusDays(i);
             String url = ctx + "/trips?originId=" + originId
                     + "&destId=" + destId
-                    + "&date=" + d;         // yyyy-MM-dd
+                    + "&date=" + d; // yyyy-MM-dd
 
-            // KHÔNG set ddMMyyyy/weekday ở đây nữa
             DayTabVm tab = new DayTabVm();
             tab.setDate(d);
             tab.setActive(d.equals(date));
             tab.setUrl(url);
-
             days.add(tab);
         }
 
@@ -183,5 +179,4 @@ public class TripListDao {
 
         return days;
     }
-
 }

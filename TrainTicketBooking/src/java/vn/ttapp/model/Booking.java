@@ -1,99 +1,90 @@
 package vn.ttapp.model;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 public class Booking {
 
-    public Integer bookingId;      // identity
-    public String bookingCode;    // ví dụ TT20251029ABCD
-    public Integer tripId;
-    public String buyerName;
-    public String buyerEmail;
-    public String buyerPhone;
-    public int subtotal;       // VND
-    public int discount;       // VND
-    public int totalAmount;    // VND
-    public BookingStatus status;   // PENDING/PAID/CANCELLED
-    public OffsetDateTime createdAt;
+    private Long bookingId;          // BIGINT IDENTITY
+    private UUID userId;             // UNIQUEIDENTIFIER (FK Users)
+    private String contactEmail;     // NVARCHAR(255)
+    private String contactPhone;     // NVARCHAR(32)
+    private String status;           // NVARCHAR(20): DRAFT / HOLD / PAID / CANCELED / EXPIRED
+    private BigDecimal subtotal;     // DECIMAL(18,2)
+    private BigDecimal discountTotal;// DECIMAL(18,2)
+    private BigDecimal totalAmount;  // DECIMAL(18,2)
+    private OffsetDateTime createdAt;
+    private OffsetDateTime updatedAt;
+    private OffsetDateTime holdExpiresAt; // NULL nếu không giữ chỗ
 
-    public Integer getBookingId() {
+    // ====== Constructors ======
+    public Booking() {
+    }
+
+    // ====== Getters & Setters ======
+    public Long getBookingId() {
         return bookingId;
     }
 
-    public void setBookingId(Integer bookingId) {
+    public void setBookingId(Long bookingId) {
         this.bookingId = bookingId;
     }
 
-    public String getBookingCode() {
-        return bookingCode;
+    public UUID getUserId() {
+        return userId;
     }
 
-    public void setBookingCode(String bookingCode) {
-        this.bookingCode = bookingCode;
+    public void setUserId(UUID userId) {
+        this.userId = userId;
     }
 
-    public Integer getTripId() {
-        return tripId;
+    public String getContactEmail() {
+        return contactEmail;
     }
 
-    public void setTripId(Integer tripId) {
-        this.tripId = tripId;
+    public void setContactEmail(String contactEmail) {
+        this.contactEmail = contactEmail;
     }
 
-    public String getBuyerName() {
-        return buyerName;
+    public String getContactPhone() {
+        return contactPhone;
     }
 
-    public void setBuyerName(String buyerName) {
-        this.buyerName = buyerName;
+    public void setContactPhone(String contactPhone) {
+        this.contactPhone = contactPhone;
     }
 
-    public String getBuyerEmail() {
-        return buyerEmail;
-    }
-
-    public void setBuyerEmail(String buyerEmail) {
-        this.buyerEmail = buyerEmail;
-    }
-
-    public String getBuyerPhone() {
-        return buyerPhone;
-    }
-
-    public void setBuyerPhone(String buyerPhone) {
-        this.buyerPhone = buyerPhone;
-    }
-
-    public int getSubtotal() {
-        return subtotal;
-    }
-
-    public void setSubtotal(int subtotal) {
-        this.subtotal = subtotal;
-    }
-
-    public int getDiscount() {
-        return discount;
-    }
-
-    public void setDiscount(int discount) {
-        this.discount = discount;
-    }
-
-    public int getTotalAmount() {
-        return totalAmount;
-    }
-
-    public void setTotalAmount(int totalAmount) {
-        this.totalAmount = totalAmount;
-    }
-
-    public BookingStatus getStatus() {
+    public String getStatus() {
         return status;
     }
 
-    public void setStatus(BookingStatus status) {
+    public void setStatus(String status) {
         this.status = status;
+    }
+
+    public BigDecimal getSubtotal() {
+        return subtotal;
+    }
+
+    public void setSubtotal(BigDecimal subtotal) {
+        this.subtotal = subtotal;
+    }
+
+    public BigDecimal getDiscountTotal() {
+        return discountTotal;
+    }
+
+    public void setDiscountTotal(BigDecimal discountTotal) {
+        this.discountTotal = discountTotal;
+    }
+
+    public BigDecimal getTotalAmount() {
+        return totalAmount;
+    }
+
+    public void setTotalAmount(BigDecimal totalAmount) {
+        this.totalAmount = totalAmount;
     }
 
     public OffsetDateTime getCreatedAt() {
@@ -104,4 +95,19 @@ public class Booking {
         this.createdAt = createdAt;
     }
 
+    public OffsetDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(OffsetDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public OffsetDateTime getHoldExpiresAt() {
+        return holdExpiresAt;
+    }
+
+    public void setHoldExpiresAt(OffsetDateTime holdExpiresAt) {
+        this.holdExpiresAt = holdExpiresAt;
+    }
 }

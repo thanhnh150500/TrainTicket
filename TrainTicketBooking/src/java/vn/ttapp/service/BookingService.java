@@ -12,54 +12,61 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class BookingService {
 
     private final SeatDao seatDao;
-    private final FareRuleDao fareDao;   // dùng đúng kiểu FareRuleDao
+    private final FareRuleDao fareDao;
     private final BookingDao bookingDao;
 
     public BookingService(SeatDao seatDao, FareRuleDao fareDao, BookingDao bookingDao) {
-        this.seatDao = seatDao;
-        this.fareDao = fareDao;
-        this.bookingDao = bookingDao;
+        this.seatDao = Objects.requireNonNull(seatDao);
+        this.fareDao = Objects.requireNonNull(fareDao);
+        this.bookingDao = Objects.requireNonNull(bookingDao);
     }
 
-    /**
-     * Tạo booking DRAFT từ danh sách SeatHold còn hiệu lực. - Tính giá theo
-     * SeatClass/FareRule. - Tạo header + items. - Gắn các hold vào booking (để
-     * không dùng lại).
-     */
     public Booking createDraftFromHolds(
             String contactEmail,
             String contactPhone,
             int tripId,
             int routeId,
-            String segment, // "OUTBOUND" | "RETURN"
+            String segment,
             LocalDate travelDate,
-            List<SeatHold> holds
+            List<SeatHold> holds 
     ) throws Exception {
 
         if (holds == null || holds.isEmpty()) {
-            throw new IllegalArgumentException("No seat holds");
+            throw new IllegalArgumentException("No seat holds / selected seats.");
+        }
+        if (contactEmail == null || contactEmail.isBlank()) {
+            throw new IllegalArgumentException("Contact email is required.");
         }
 
-        // 2) Tính giá và build BookingItem list
+        final String seg = "RETURN".equalsIgnoreCase(segment) ? "RETURN" : "OUTBOUND";
+
         BigDecimal subtotal = BigDecimal.ZERO;
-        List<BookingItem> items = new ArrayList<>();
+        List<BookingItem> items = new ArrayList<>(holds.size());
+
         for (SeatHold h : holds) {
-            Seat seat = seatDao.findById(h.seatId);
+            int seatId = h.getSeatId();
+            Seat seat = seatDao.findById(seatId);
             if (seat == null) {
-                throw new IllegalStateException("Seat not found: " + h.seatId);
+                throw new IllegalStateException("Seat not found: " + seatId);
             }
+
             BigDecimal basePrice = fareDao.getPrice(routeId, seat.getSeatClassId(), travelDate);
+            if (basePrice == null) {
+                throw new IllegalStateException("Base price not found (routeId=" + routeId
+                        + ", seatClassId=" + seat.getSeatClassId() + ", date=" + travelDate + ")");
+            }
 
             BookingItem bi = new BookingItem();
             bi.setTripId(tripId);
             bi.setSeatId(seat.getSeatId());
             bi.setSeatClassId(seat.getSeatClassId());
-            bi.setSeatCode(seat.getCode());
-            bi.setSegment("RETURN".equalsIgnoreCase(segment) ? "RETURN" : "OUTBOUND");
+            bi.setSeatCode(seat.getCode());      // field phụ trợ để hiển thị
+            bi.setSegment(seg);
             bi.setBasePrice(basePrice);
             bi.setDiscountAmount(BigDecimal.ZERO);
             bi.setAmount(basePrice);
@@ -67,9 +74,14 @@ public class BookingService {
             subtotal = subtotal.add(basePrice);
             items.add(bi);
         }
-
-        // 3) Tạo DRAFT + Items + Link holds trong 1 transaction ở DAO
-        return bookingDao.createDraftWithItems(contactEmail, contactPhone, tripId, subtotal, items, holds);
+        
+        return bookingDao.createDraftWithItems(
+                contactEmail,
+                contactPhone,
+                tripId,
+                subtotal,
+                items
+        );
     }
 
     public Booking findById(Long bookingId) throws Exception {

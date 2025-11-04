@@ -1,34 +1,54 @@
 package vn.ttapp.service;
-
 import vn.ttapp.dao.UserDao;
 import vn.ttapp.model.User;
 import vn.ttapp.security.PasswordUtil;
 
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
+import java.util.UUID;
 
-/**
- *
- * @author New User
- */
 public class AuthService {
+
     private final UserDao userDao = new UserDao();
-    
+
     public User login(String email, String password) throws Exception {
+        if (email == null || password == null) {
+            return null;
+        }
+        email = email.trim().toLowerCase();
+        if (email.isEmpty() || password.isEmpty()) {
+            return null;
+        }
+
         User u = userDao.findByEmail(email);
-        if (u == null || !u.isActive())
+        if (u == null || !u.isActive()) {
             return null;
-        if (!PasswordUtil.verify(password, u.getPassword()))
+        }
+
+        // So khớp với password_hash
+        if (!PasswordUtil.verify(password, u.getPasswordHash())) {
             return null;
+        }
+
         return u;
     }
-    
+
     public String register(String email, String password, String fullName) throws Exception {
-        if (userDao.emailExists(email))
+        if (email == null || password == null || fullName == null) {
             return null;
-        String hash = PasswordUtil.hash(password);
-        return userDao.create(email, hash, fullName);
+        }
+        email = email.trim().toLowerCase();
+        fullName = fullName.trim();
+
+        if (email.isEmpty() || password.isEmpty() || fullName.isEmpty()) {
+            return null;
+        }
+
+        // Có thể bổ sung kiểm tra định dạng email, độ dài password tại đây
+        if (userDao.emailExists(email)) {
+            return null; // email đã tồn tại
+        }
+
+        String hash = PasswordUtil.hash(password); // tạo BCrypt hash
+        UUID id = userDao.create(email, hash, fullName);
+        return id != null ? id.toString() : null;
     }
 }

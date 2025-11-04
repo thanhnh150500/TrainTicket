@@ -1,25 +1,25 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package vn.ttapp.model;
 
-/**
- *
- * @author New User
- */
-public class User {
-    private String userId;
-    private String email;
-    private String password;
-    private String fullName;
-    private boolean active;
+import java.time.Instant;
+import java.util.UUID;
 
-    public String getUserId() {
+public class User {
+
+    private UUID userId;
+    private String email;
+    private String passwordHash;
+    private String fullName;
+    private String phone;
+    private String address;
+    private boolean active;
+    private Instant createdAt;
+    private Instant updatedAt;
+
+    public UUID getUserId() {
         return userId;
     }
 
-    public void setUserId(String userId) {
+    public void setUserId(UUID userId) {
         this.userId = userId;
     }
 
@@ -31,12 +31,12 @@ public class User {
         this.email = email;
     }
 
-    public String getPassword() {
-        return password;
+    public String getPasswordHash() {
+        return passwordHash;
     }
 
-    public void setPassword(String password) {
-        this.password = password;
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
     }
 
     public String getFullName() {
@@ -47,6 +47,22 @@ public class User {
         this.fullName = fullName;
     }
 
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
     public boolean isActive() {
         return active;
     }
@@ -54,6 +70,20 @@ public class User {
     public void setActive(boolean active) {
         this.active = active;
     }
-    
-    
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 }

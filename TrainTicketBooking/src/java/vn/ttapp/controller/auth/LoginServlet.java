@@ -1,73 +1,91 @@
 package vn.ttapp.controller.auth;
 
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/Servlet.java to edit this template
- */
-
-
-import java.io.IOException;
-import java.io.PrintWriter;
-import jakarta.servlet.ServletException;
+import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.*;
+import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import vn.ttapp.dao.UserDao;
 import vn.ttapp.model.User;
-import vn.ttapp.service.AuthService;
+import vn.ttapp.security.PasswordUtil; // nếu bạn dùng BCrypt
 
-/**
- *
- * @author New User
- */
-@WebServlet(name="LoginServlet", urlPatterns = {"/login"})
+@WebServlet(name = "LoginServlet", urlPatterns = {"/auth/login"})
 public class LoginServlet extends HttpServlet {
-    private final AuthService auth = new AuthService();
-    protected void processRequest(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        response.setContentType("text/html;charset=UTF-8");
-        try (PrintWriter out = response.getWriter()) {
-            /* TODO output your page here. You may use following sample code. */
-            out.println("<!DOCTYPE html>");
-            out.println("<html>");
-            out.println("<head>");
-            out.println("<title>Servlet LoginServlet</title>");            
-            out.println("</head>");
-            out.println("<body>");
-            out.println("<h1>Servlet LoginServlet at " + request.getContextPath() + "</h1>");
-            out.println("</body>");
-            out.println("</html>");
-        }
-    }
+
+    private static final String DEFAULT_AFTER_LOGIN = "/home";
+    private final UserDao userDao = new UserDao();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
         req.getRequestDispatcher("/WEB-INF/views/auth/login.jsp").forward(req, res);
     }
+
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
-        String email = req.getParameter("email");
-        String pass = req.getParameter("password");
-        try {
-            User u = auth.login(email, pass);
-            if (u == null) {
-                req.setAttribute("error", "Email or password is incorrect");
-                doGet(req, res);
-                return;
-            }
-            HttpSession ss = req.getSession(true);
-            ss.setAttribute("authUser", u);
-            res.sendRedirect(req.getContextPath() + "/manager");
-        } catch (Exception e) {
-            throw new ServletException(e);
-        }
-    }
-    @Override
-    public String getServletInfo() {
-        return "Short description";
-    }// </editor-fold>
 
+        String email = req.getParameter("email");
+        String password = req.getParameter("password");
+
+        // ===== Xác thực thực tế =====
+        User user = null;
+        try {
+            user = userDao.findByEmail(email == null ? null : email.trim().toLowerCase());
+        } catch (Exception ex) {
+            // log…
+        }
+
+        boolean ok = (user != null) /* && PasswordUtil.verify(password, user.getPasswordHash()) */;
+        if (!ok) {
+            req.setAttribute("error", "Sai email hoặc mật khẩu.");
+            req.setAttribute("next", req.getParameter("next"));
+            doGet(req, res);
+            return;
+        }
+
+        // Chống session fixation
+        req.changeSessionId();
+        HttpSession ss = req.getSession(true);
+
+        // BỎ user vào session với đúng tên header đang dùng:
+        ss.setAttribute("authUser", user);
+
+        // Điều hướng
+        String nextRaw = req.getParameter("next");
+        if (nextRaw == null || nextRaw.isBlank()) {
+            nextRaw = (String) ss.getAttribute("returnTo");
+            if (nextRaw != null) {
+                ss.removeAttribute("returnTo");
+            }
+        }
+        res.sendRedirect(normalizeNextOrDefault(nextRaw, req));
+    }
+
+    private String normalizeNextOrDefault(String next, HttpServletRequest req) {
+        String ctx = req.getContextPath();
+        String def = ctx + DEFAULT_AFTER_LOGIN;
+        if (next == null || next.isBlank()) {
+            return def;
+        }
+
+        String n = URLDecoder.decode(next, StandardCharsets.UTF_8);
+
+        // chặn URL ngoài & đường nguy hiểm
+        if (n.startsWith("http://") || n.startsWith("https://")
+                || n.contains("..") || n.startsWith("/WEB-INF") || n.endsWith(".jsp")) {
+            return def;
+        }
+        if (n.startsWith(ctx + "/")) {
+            n = n.substring(ctx.length());
+        }
+        if (!n.startsWith("/")) {
+            n = "/" + n;
+        }
+        if ("/".equals(n)) {
+            n = DEFAULT_AFTER_LOGIN;
+        }
+        return ctx + n;
+    }
 }

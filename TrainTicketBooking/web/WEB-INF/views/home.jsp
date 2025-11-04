@@ -1,30 +1,36 @@
 <%@page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@taglib prefix="c" uri="jakarta.tags.core"%>
+<%@taglib prefix="fn" uri="jakarta.tags.functions"%>
 
 <%
   String ctx = request.getContextPath();
   String today = java.time.LocalDate.now().toString();
+  String here = request.getRequestURI() + (request.getQueryString() == null ? "" : "?" + request.getQueryString());
 %>
 <!DOCTYPE html>
 <html lang="vi">
     <head>
         <meta charset="UTF-8">
         <title>Trang chủ | Đặt vé tàu</title>
-        <!-- Voyage Theme Core -->
+
+        <!-- Bootstrap core -->
         <link rel="stylesheet" href="<%=ctx%>/assets/bootstrap/css/bootstrap.min.css">
+        <!-- Bootstrap Icons (để dùng bi bi-*) -->
+        <link rel="stylesheet" href="<%=ctx%>/assets/icons/bootstrap-icons.min.css">
 
         <!-- Custom home page overrides -->
         <link rel="stylesheet" href="<%=ctx%>/assets/css/home.css">
     </head>
     <body>
         <%@ include file="/WEB-INF/views/layout/_header.jsp" %>
+
         <!-- ============ SECTION 1: SEARCH TRIP ============ -->
         <section class="voy-hero py-5 bg-light">
             <div class="container">
                 <div class="row g-4 align-items-center">
                     <div class="col-lg-6">
                         <h1 class="fw-bold mb-2">Tìm & đặt vé tàu nhanh chóng</h1>
-                        <p class="text-muted mb-4">Chọn chuyến, chọn ghế, thanh toán an toàn — mọi thứ trong một bước.</p>
+                        <p class="text-muted mb-4">Chọn chuyến, chọn ghế, thanh toán an toàn — tất cả trong vài bước.</p>
 
                         <!-- FORM -->
                         <div class="card shadow-sm border-0 p-3 rounded-4">
@@ -37,26 +43,28 @@
                                 </li>
                             </ul>
 
-                            <form id="tripSearchForm" action="${pageContext.request.contextPath}/tripsearch" method="post" novalidate>
+                            <form id="tripSearchForm" action="<%=ctx%>/tripsearch" method="post" novalidate>
                                 <input type="hidden" name="_csrf" value="${sessionScope.csrfToken}"/>
-                                <input type="hidden" name="tripType" id="tripType" value="ONEWAY">
+                                <input type="hidden" name="tripType" id="tripType" value="ONEWAY"/>
 
                                 <div class="row g-3">
                                     <!-- Ga đi -->
                                     <div class="col-md-6">
                                         <div class="input-group">
-                                            <span class="input-group-text"><i class="fas fa-train"></i></span>
-                                            <input list="stationList" class="form-control input-box" name="originStation" id="originStation"
+                                            <span class="input-group-text"><i class="bi bi-train-front"></i></span>
+                                            <input list="stationList" class="form-control" name="originStation" id="originStation"
                                                    placeholder="Từ: Hà Nội" required>
-                                            <button type="button" class="btn btn-light border" id="swapBtn" title="Đổi chiều">⇄</button>
+                                            <button type="button" class="btn btn-light border" id="swapBtn" title="Đổi chiều">
+                                                <i class="bi bi-arrow-left-right"></i>
+                                            </button>
                                         </div>
                                     </div>
 
                                     <!-- Ga đến -->
                                     <div class="col-md-6">
                                         <div class="input-group">
-                                            <span class="input-group-text"><i class="fas fa-train"></i></span>
-                                            <input list="stationList" class="form-control input-box" name="destStation" id="destStation"
+                                            <span class="input-group-text"><i class="bi bi-geo"></i></span>
+                                            <input list="stationList" class="form-control" name="destStation" id="destStation"
                                                    placeholder="Đến: Đà Nẵng" required>
                                         </div>
                                     </div>
@@ -64,8 +72,8 @@
                                     <!-- Ngày đi -->
                                     <div class="col-md-6">
                                         <div class="input-group">
-                                            <span class="input-group-text"><i class="fas fa-calendar"></i></span>
-                                            <input class="form-control input-box" type="date" name="departDate" id="departDate"
+                                            <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
+                                            <input class="form-control" type="date" name="departDate" id="departDate"
                                                    value="<%=today%>" min="<%=today%>" required>
                                         </div>
                                     </div>
@@ -73,20 +81,25 @@
                                     <!-- Ngày về -->
                                     <div class="col-md-6">
                                         <div class="input-group">
-                                            <span class="input-group-text"><i class="fas fa-calendar"></i></span>
-                                            <input class="form-control input-box" type="date" name="returnDate" id="returnDate" disabled>
-                                            <button type="button" class="btn btn-light border ms-2" id="clearReturnBtn" title="Xoá ngày về">✕</button>
+                                            <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
+                                            <input class="form-control" type="date" name="returnDate" id="returnDate" disabled>
+                                            <button type="button" class="btn btn-light border ms-2" id="clearReturnBtn" title="Xoá ngày về">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
                                         </div>
                                     </div>
 
                                     <!-- Submit -->
                                     <div class="col-12 text-end">
+                                        <!-- Nếu muốn login ở đây: truyền next=URL hiện tại -->
+                                        <!-- <a class="btn btn-outline-secondary me-2" href="<%=ctx%>/auth/login?next=<%= java.net.URLEncoder.encode(here, java.nio.charset.StandardCharsets.UTF_8) %>">Đăng nhập</a> -->
                                         <button class="btn btn-primary px-4" type="submit">Tìm chuyến</button>
                                     </div>
                                 </div>
 
                                 <datalist id="stationList">
                                     <c:forEach var="s" items="${stations}">
+                                        <!-- value là tên hiển thị; bạn có thể thêm data-* nếu cần code -->
                                         <option value="${s.name}">${s.name}</option>
                                     </c:forEach>
                                 </datalist>
@@ -94,6 +107,10 @@
                                 <c:if test="${not empty sessionScope.error}">
                                     <div class="alert alert-danger mt-3">${sessionScope.error}</div>
                                     <c:remove var="error" scope="session"/>
+                                </c:if>
+                                <c:if test="${not empty sessionScope.message}">
+                                    <div class="alert alert-success mt-3">${sessionScope.message}</div>
+                                    <c:remove var="message" scope="session"/>
                                 </c:if>
                             </form>
                         </div>
@@ -106,7 +123,6 @@
             </div>
         </section>
 
-
         <!-- ============ SECTION 2: DEAL TÀU GIÁ RẺ ============ -->
         <section class="sec py-5">
             <div class="container">
@@ -118,7 +134,7 @@
                 <div class="d-flex flex-row flex-nowrap gap-3 overflow-auto pb-2">
                     <c:forEach var="d" items="${cheapDeals}">
                         <div class="card border-0 shadow-sm" style="width:240px;">
-                            <img class="card-img-top" src="${empty d.imageUrl ? (ctx+'/static/img/deal-fallback.jpg') : d.imageUrl}" alt="${d.title}">
+                            <img class="card-img-top" src="${empty d.imageUrl ? (pageContext.request.contextPath+'/static/img/deal-fallback.jpg') : d.imageUrl}" alt="${d.title}">
                             <div class="card-body">
                                 <div class="fw-semibold text-truncate">${d.title}</div>
                                 <div class="text-muted small text-truncate">${d.routeLabel}</div>
@@ -135,7 +151,6 @@
             </div>
         </section>
 
-
         <!-- ============ SECTION 3: BÀI VIẾT NỔI BẬT ============ -->
         <section class="sec py-5 bg-light">
             <div class="container">
@@ -148,7 +163,7 @@
                     <c:forEach var="p" items="${featuredPosts}">
                         <div class="col-md-4">
                             <div class="card border-0 shadow-sm h-100">
-                                <img class="card-img-top" src="${empty p.coverUrl ? (ctx+'/static/img/post-fallback.jpg') : p.coverUrl}" alt="${p.title}">
+                                <img class="card-img-top" src="${empty p.coverUrl ? (pageContext.request.contextPath+'/static/img/post-fallback.jpg') : p.coverUrl}" alt="${p.title}">
                                 <div class="card-body">
                                     <h5 class="fw-semibold">${p.title}</h5>
                                     <p class="text-muted small mb-2">${p.excerpt}</p>
@@ -161,7 +176,6 @@
             </div>
         </section>
 
-
         <!-- ============ SECTION 4: ĐỐI TÁC ============ -->
         <section class="sec py-5">
             <div class="container">
@@ -170,7 +184,7 @@
                     <c:forEach var="pt" items="${partners}">
                         <div class="col-6 col-md-3 col-lg-2">
                             <div class="border rounded-3 bg-white d-flex align-items-center justify-content-center p-3" style="height:76px;">
-                                <img src="${empty pt.logoUrl ? (ctx+'/static/img/logo-fallback.svg') : pt.logoUrl}" class="img-fluid" alt="${pt.name}">
+                                <img src="${empty pt.logoUrl ? (pageContext.request.contextPath+'/static/img/logo-fallback.svg') : pt.logoUrl}" class="img-fluid" alt="${pt.name}">
                             </div>
                         </div>
                     </c:forEach>
@@ -178,10 +192,42 @@
             </div>
         </section>
 
-
-        <!-- ============ JS ============ -->
+        <!-- JS -->
         <script src="<%=ctx%>/assets/bootstrap/js/bootstrap.bundle.min.js"></script>
-        <script src="<%=ctx%>/assets/js/home.js"></script>
+        <script>
+            const tabOneway = document.getElementById('tab-oneway');
+            const tabRound = document.getElementById('tab-round');
+            const tripType = document.getElementById('tripType');
+            const returnDate = document.getElementById('returnDate');
+            const clearReturnBtn = document.getElementById('clearReturnBtn');
+            const origin = document.getElementById('originStation');
+            const dest = document.getElementById('destStation');
+            const swapBtn = document.getElementById('swapBtn');
 
+            tabOneway?.addEventListener('click', () => {
+                tripType.value = 'ONEWAY';
+                returnDate.value = '';
+                returnDate.disabled = true;
+                tabOneway.classList.add('active');
+                tabRound.classList.remove('active');
+            });
+
+            tabRound?.addEventListener('click', () => {
+                tripType.value = 'ROUND';
+                returnDate.disabled = false;
+                tabRound.classList.add('active');
+                tabOneway.classList.remove('active');
+            });
+
+            clearReturnBtn?.addEventListener('click', () => {
+                returnDate.value = '';
+            });
+
+            swapBtn?.addEventListener('click', () => {
+                const a = origin.value;
+                origin.value = dest.value;
+                dest.value = a;
+            });
+        </script>
     </body>
 </html>

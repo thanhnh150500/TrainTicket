@@ -57,6 +57,13 @@ public class SeatMapServlet extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
 
+        if (!vn.ttapp.security.AuthUtil.isLoggedIn(req)) {
+            // Nếu chưa đăng nhập → chuyển hướng về trang login
+            resp.sendRedirect(req.getContextPath() + "/login?next=" + req.getRequestURI()
+                    + (req.getQueryString() != null ? "?" + req.getQueryString() : ""));
+            return;
+        }
+
         String tripIdStr = req.getParameter("tripId");
         if (tripIdStr == null || tripIdStr.isBlank()) {
             resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing tripId");

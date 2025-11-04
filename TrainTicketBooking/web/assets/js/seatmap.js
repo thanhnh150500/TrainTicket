@@ -1,11 +1,13 @@
-// assets/js/seatmap.js — API-match (Servlet SeatMapApiServlet) + price + center layout
+// assets/js/seatmap.js — FINAL (API-match + price + centered grid + checkout post fallback hold)
 const MAX_SELECT = 4;
 let raw = [];                 // toàn bộ seat (mọi toa) từ API
 let seatsByCarId = new Map(); // group theo carriageId
 let cars = [];                // [{id, no, name, sort}]
 let carIndex = 0;
-let selected = new Set();
 let busy = false;
+
+// Thay Set -> Map để giữ đủ thông tin ghế
+const selected = new Map();   // key: seatId, val: seatObj (chuẩn normalizeSeat)
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
@@ -52,14 +54,6 @@ function formatVND(n) {
     }
 }
 
-/* =============== normalize từ SeatDto của API =============== */
-/*
- API SeatDto:
- {
- id, code, row, col, price, status, holdExpiresAt,
- carriageId, carriageCode, seatClassId, seatClassCode, seatClassName
- }
- */
 function normalizeSeat(s) {
     const seatId = Number(s.id ?? s.seatId ?? s.seat_id);
     const seatCode = String(s.code ?? s.seatCode ?? '').trim();
@@ -109,7 +103,6 @@ async function fetchSeatMap() {
             return;
         }
         if (!r.ok) {
-            // log chi tiết giúp debug nếu server trả lỗi
             let text = '';
             try {
                 text = await r.text();
@@ -120,7 +113,7 @@ async function fetchSeatMap() {
         }
         const payload = await r.json();
 
-        // 1) Cars (coaches) từ API
+        // 1) Cars (coaches)
         cars = Array.isArray(payload?.coaches) ? payload.coaches.map(co => ({
                 id: Number(co.id),
                 no: Number(co.no),
@@ -128,12 +121,11 @@ async function fetchSeatMap() {
                 sort: Number(co.no) || Number(co.id)
             })) : [];
 
-        // loại trùng theo số toa
         const seen = new Set();
         cars = cars.filter(c => (c.id && !seen.has(c.sort) && seen.add(c.sort)))
                 .sort((a, b) => a.sort - b.sort || a.id - b.id);
 
-        // 2) Seats từ API
+        // 2) Seats
         const seatsRaw = Array.isArray(payload?.seats) ? payload.seats : [];
         raw = seatsRaw.map(normalizeSeat);
 
@@ -143,13 +135,13 @@ async function fetchSeatMap() {
         // 4) Group seats theo carriageId
         buildSeatsByCarId();
 
-        // 5) Render strip mini-car và coach
+        // 5) Render
         renderMiniCars();
         if (cars.length > 0)
             openCar(Math.min(carIndex, cars.length - 1));
         updateSummary();
 
-        // debug nhẹ
+        // debug
         const dbg = {};
         for (const [cid, arr] of seatsByCarId.entries())
             dbg[cid] = arr.length;
@@ -288,9 +280,11 @@ function renderCoach(car) {
                 selected.delete(id);
                 btn.classList.remove('chosen');
             } else {
-                if (selected.size >= MAX_SELECT)
+                if (selected.size >= MAX_SELECT) {
+                    alert(`Bạn chỉ chọn tối đa ${MAX_SELECT} ghế`);
                     return;
-                selected.add(id);
+                }
+                selected.set(id, s); // lưu full seat object
                 btn.classList.add('chosen');
             }
             updateHint();
@@ -306,7 +300,9 @@ function renderCoach(car) {
 function updateHint() {
     const el = $('#hint');
     if (el)
-        el.textContent = `Đang chọn: ${selected.size}/${MAX_SELECT} ghế`;
+        el.textContent = selected.size
+                ? `Đang chọn: ${selected.size}/${MAX_SELECT} ghế`
+                : `Chọn tối đa ${MAX_SELECT} ghế`;
 }
 function getBookBtn() {
     return document.getElementById('btnBook') || document.getElementById('btnHold');
@@ -314,64 +310,129 @@ function getBookBtn() {
 function setLoading(on) {
     const b = getBookBtn();
     if (b)
-        b.toggleAttribute('disabled', !!(on || busy));
+        b.toggleAttribute('disabled', !!on || busy);
 }
 function updateSummary() {
-    const total = raw.length || 0;
-    const free = raw.filter(s => (s.available ?? true)).length;
+    const free = raw.filter(s => s.available === true).length;
+    const total = raw.length;
     const booked = Math.max(0, total - free);
     $('#kFree')?.replaceChildren(String(free));
     $('#kBooked')?.replaceChildren(String(booked));
 }
 
-/* ================= booking ================= */
+/* ================== BOOK/HOLD or CHECKOUT ================== */
 const BOOK_ENDPOINT = `${ctx}/api/hold`;
+
+function addHidden(root, name, val) {
+    const i = document.createElement('input');
+    i.type = 'hidden';
+    i.name = name;
+    i.value = (val ?? '').toString();
+    root.appendChild(i);
+}
+
+async function postHold() {
+    const csrf = CSRF();
+    if (!csrf) {
+        alert('Thiếu CSRF token. Vui lòng tải lại trang.');
+        return;
+    }
+    const body = {tripId: Number(tripId), seatIds: Array.from(selected.keys())};
+    busy = true;
+    setLoading(true);
+    try {
+        const r = await fetch(BOOK_ENDPOINT, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf, Accept: 'application/json'},
+            credentials: 'same-origin',
+            body: JSON.stringify(body)
+        });
+        if (r.status === 403) {
+            alert('Phiên làm việc đã hết hạn hoặc token không hợp lệ (403).');
+            return;
+        }
+        if (!r.ok)
+            throw new Error(`HTTP ${r.status}: ${await r.text()}`);
+        const res = await r.json();
+        if (!res.ok) {
+            alert(res.error || 'Giữ ghế thất bại');
+            return;
+        }
+        alert('Giữ ghế thành công!');
+        selected.clear();
+        await fetchSeatMap();
+    } catch (e) {
+        console.error('Book/Hold error', e);
+        alert('Giữ ghế thất bại.');
+    } finally {
+        busy = false;
+        setLoading(false);
+    }
+}
+
+function postCheckout() {
+    let form = document.getElementById('checkoutPostForm');
+    if (!form) {
+        // Tạo mới (fallback) → tự thêm _csrf từ <meta>
+        form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `${ctx}/checkout`;
+        form.className = 'd-none';
+        document.body.appendChild(form);
+        addHidden(form, '_csrf', CSRF() || '');
+        addHidden(form, 'tripId', tripId || '');
+        addHidden(form, 'trainCode', (typeof trainCode !== 'undefined' ? trainCode : '') || '');
+        addHidden(form, 'originName', ($('.route-text')?.textContent?.trim().split('từ')[1]?.split('đến')[0] || '').trim());
+        addHidden(form, 'destName', ($('.route-text')?.textContent?.trim().split('đến')[1] || '').trim());
+        addHidden(form, 'departTime', $('#kDepart')?.textContent?.trim() || '');
+        addHidden(form, 'arriveTime', $('#kArrive')?.textContent?.trim() || '');
+    } else {
+        // Form có sẵn → nếu input _csrf rỗng thì châm từ <meta>
+        const t = form.querySelector('input[name="_csrf"]');
+        if (t && (!t.value || !t.value.trim()))
+            t.value = CSRF() || '';
+    }
+
+    const seatsDiv = document.getElementById('seatsContainer') || form;
+    if (seatsDiv !== form)
+        seatsDiv.innerHTML = '';
+
+    for (const s of selected.values()) {
+        addHidden(seatsDiv, 'seatId[]', s.seatId);
+        addHidden(seatsDiv, 'seatCode[]', s.seatCode);
+        addHidden(seatsDiv, 'carriageId[]', s.carriageId);
+        addHidden(seatsDiv, 'seatClassId[]', s.seatClassId);
+        addHidden(form, 'price[]', Number(s.price ?? 0));
+        addHidden(seatsDiv, 'seatClassName[]', s.seatClassName || '');
+    }
+
+    form.submit();
+}
+
+
 (function bindBook() {
     const btn = getBookBtn();
     if (!btn)
         return;
+
     btn.addEventListener('click', async () => {
-        if (selected.size === 0)
-            return alert('Bạn chưa chọn ghế nào.');
-        const csrf = CSRF();
-        if (!csrf)
-            return alert('Thiếu CSRF token. Vui lòng tải lại trang.');
-        const body = {tripId: Number(tripId), seatIds: Array.from(selected)};
-        try {
-            busy = true;
-            setLoading(true);
-            const r = await fetch(BOOK_ENDPOINT, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf, Accept: 'application/json'},
-                credentials: 'same-origin',
-                body: JSON.stringify(body)
-            });
-            if (r.status === 403) {
-                alert('Phiên làm việc đã hết hạn hoặc token không hợp lệ (403).');
-                return;
-            }
-            if (!r.ok)
-                throw new Error(`HTTP ${r.status}: ${await r.text()}`);
-            const res = await r.json();
-            if (!res.ok) {
-                alert(res.error || 'Đặt vé/giữ ghế thất bại');
-                return;
-            }
-            alert('Đặt vé/giữ ghế thành công!');
-            selected.clear();
-            await fetchSeatMap();
-        } catch (e) {
-            console.error('Book error', e);
-            alert('Đặt vé/giữ ghế thất bại.');
-        } finally {
-            busy = false;
-            setLoading(false);
+        if (selected.size === 0) {
+            alert('Vui lòng chọn ít nhất 1 ghế');
+            return;
         }
+
+        // Nếu có form checkout -> chuyển sang trang "Thông tin khách hàng"
+        if (document.getElementById('checkoutPostForm')) {
+            postCheckout();
+            return;
+        }
+        // Nếu không có form (flow cũ) -> gọi API hold
+        await postHold();
     });
 })();
 
 /* ================= boot ================= */
 document.addEventListener('DOMContentLoaded', () => {
     fetchSeatMap();
-    // nếu có strip chọn chuyến, bạn có thể thêm wireTrainCards() như trước
+    // nếu có strip chọn chuyến, có thể bổ sung wireTrainCards() ở đây
 });

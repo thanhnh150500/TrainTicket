@@ -3,9 +3,8 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/C:/Users/New%20User/train-ticket-booking/TrainTicketBooking/build/web/WEB-INF/views/home.jsp</file>
-            <file>file:/C:/Users/New%20User/train-ticket-booking/TrainTicketBooking/src/java/vn/ttapp/controller/auth/HomeServlet.java</file>
-            <file>file:/C:/Users/New%20User/train-ticket-booking/TrainTicketBooking/build/web/assets/js/home.js</file>
+            <file>file:/C:/Users/New%20User/train-ticket-booking/TrainTicketBooking/web/assets/js/trip.js</file>
+            <file>file:/C:/Users/New%20User/train-ticket-booking/TrainTicketBooking/web/WEB-INF/views/customer/triplist.jsp</file>
         </group>
     </open-files>
 </project-private>
