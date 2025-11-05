@@ -11,11 +11,13 @@ import java.util.Collections;
 import java.util.List;
 import java.sql.Date;
 import java.sql.Time;
+import vn.ttapp.dao.TripStaffDao;
+import vn.ttapp.model.User;
 
 public class TripService {
 
     private final TripDao dao = new TripDao();
-
+    private final TripStaffDao staffDao = new TripStaffDao();
     public static class SearchResult {
 
         public List<Trip> outbound; // chiều đi
@@ -77,6 +79,9 @@ public class TripService {
     public List<Trip> findAll() throws SQLException {
         return dao.findAll();
     }
+    public List<User> getAllStaffFNB() throws SQLException {
+        return staffDao.findAllStaffFNB();
+    }
 
     public Integer create(int routeId, int trainId, LocalDateTime departAt, LocalDateTime arriveAt, String status)
             throws SQLException {
@@ -89,5 +94,12 @@ public class TripService {
 
     public boolean delete(int id) throws SQLException {
         return dao.delete(id) > 0;
+    }
+    public List<User> getStaffByTrip(int tripId) throws SQLException {
+        return staffDao.findByTripId(tripId);
+    }
+
+    public void assignStaff(int tripId, List<String> staffIds, String staffRole) throws SQLException {
+        staffDao.assignStaffToTrip(tripId, staffIds, staffRole);
     }
 }

@@ -49,7 +49,6 @@
             <div class="mb-3">
                 <label class="form-label">Mã ga (code)</label>
                 <input type="text" name="code" class="form-control" value="${s.code}" required maxlength="20" />
-                <div class="form-text">Ví dụ: GAHN, GASA (duy nhất).</div>
             </div>
 
             <div class="mb-3">

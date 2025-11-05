@@ -257,7 +257,7 @@ public class StationDao {
         String sql = """
             SELECT station_id
             FROM dbo.Station
-            WHERE name COLLATE SQL_Latin1_General_CP1_CI_AI = ?
+            WHERE name COLLATE SQL_Latin1_General_CP1_CI_AI = N?
         """;
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setNString(1, name);

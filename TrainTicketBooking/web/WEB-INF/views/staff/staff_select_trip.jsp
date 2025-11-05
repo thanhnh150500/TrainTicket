@@ -34,8 +34,8 @@
                             </div>
                             <p class="mb-1">
                                 Khởi hành: 
-                                <%-- (Định dạng LocalDateTime) --%>
-                                <fmt:formatDate value="${trip.departAt}" pattern="HH:mm 'ngày' dd/MM/yyyy" timeZone="Asia/Ho_Chi_Minh"/>
+                                <%-- Use helper Date property for formatting --%>
+                                <fmt:formatDate value="${trip.departAtDate}" pattern="HH:mm 'ngày' dd/MM/yyyy" timeZone="Asia/Ho_Chi_Minh"/>
                             </p>
                             <small>Trạng thái: ${trip.status}</small>
                         </a>

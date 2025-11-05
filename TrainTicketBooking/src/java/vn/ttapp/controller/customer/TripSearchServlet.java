@@ -31,6 +31,41 @@ public class TripSearchServlet extends HttpServlet {
         response.sendRedirect(request.getContextPath() + "/home");
     }
 
+    // Lenient date parser: accept yyyy-MM-dd (ISO) or dd/MM/yyyy
+    private LocalDate parseDateLenient(String s) {
+        if (s == null) return null;
+        s = s.trim();
+        List<DateTimeFormatter> fmts = List.of(
+                DateTimeFormatter.ISO_LOCAL_DATE,
+                DateTimeFormatter.ofPattern("dd/MM/yyyy")
+        );
+        for (DateTimeFormatter f : fmts) {
+            try {
+                return LocalDate.parse(s, f);
+            } catch (DateTimeParseException ignore) {
+            }
+        }
+        return null;
+    }
+
+    // Lenient time parser: accept HH:mm or HH:mm:ss (and variants)
+    private LocalTime parseTimeLenient(String s) {
+        if (s == null) return null;
+        s = s.trim();
+        List<DateTimeFormatter> fmts = List.of(
+                DateTimeFormatter.ISO_LOCAL_TIME,
+                DateTimeFormatter.ofPattern("H:mm"),
+                DateTimeFormatter.ofPattern("HH:mm")
+        );
+        for (DateTimeFormatter f : fmts) {
+            try {
+                return LocalTime.parse(s, f);
+            } catch (DateTimeParseException ignore) {
+            }
+        }
+        return null;
+    }
+
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -77,9 +112,10 @@ public class TripSearchServlet extends HttpServlet {
             int pax = 1;
 
             try {
-                departDate = LocalDate.parse(departRaw);
+                departDate = parseDateLenient(departRaw);
+                if (departDate == null) throw new DateTimeParseException("Unparseable date", departRaw, 0);
             } catch (DateTimeParseException ex) {
-                backWithError(request, response, "Ngày đi không hợp lệ (yyyy-MM-dd).");
+                backWithError(request, response, "Ngày đi không hợp lệ. Hãy dùng định dạng yyyy-MM-dd hoặc dd/MM/yyyy.");
                 return;
             }
 
@@ -97,9 +133,10 @@ public class TripSearchServlet extends HttpServlet {
                     return;
                 }
                 try {
-                    returnDate = LocalDate.parse(returnRaw);
+                    returnDate = parseDateLenient(returnRaw);
+                    if (returnDate == null) throw new DateTimeParseException("Unparseable date", returnRaw, 0);
                 } catch (DateTimeParseException ex) {
-                    backWithError(request, response, "Ngày về không hợp lệ (yyyy-MM-dd).");
+                    backWithError(request, response, "Ngày về không hợp lệ. Hãy dùng định dạng yyyy-MM-dd hoặc dd/MM/yyyy.");
                     return;
                 }
                 if (returnDate.isBefore(departDate)) {
@@ -110,9 +147,10 @@ public class TripSearchServlet extends HttpServlet {
 
             if (timeRaw != null && !timeRaw.isBlank()) {
                 try {
-                    departTime = LocalTime.parse(timeRaw);
+                    departTime = parseTimeLenient(timeRaw);
+                    if (departTime == null) throw new DateTimeParseException("Unparseable time", timeRaw, 0);
                 } catch (DateTimeParseException ex) {
-                    backWithError(request, response, "Giờ đi không hợp lệ (HH:mm).");
+                    backWithError(request, response, "Giờ đi không hợp lệ. Hãy dùng định dạng HH:mm hoặc HH:mm:ss.");
                     return;
                 }
             }

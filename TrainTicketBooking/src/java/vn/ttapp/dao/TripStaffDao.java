@@ -55,7 +55,7 @@ public List<User> findAllStaffFNB() throws SQLException {
                    FROM Users u
                    INNER JOIN UserRoles ur ON u.user_id = ur.user_id
                    INNER JOIN Roles r ON ur.role_id = r.role_id
-                   WHERE r.code = 'STAFF_FNB' AND u.is_active = 1
+                   WHERE r.code = 'STAFF_POS' AND u.is_active = 1
                  """;
     try (Connection c = Db.getConnection();
             PreparedStatement ps = c.prepareStatement(sql);
@@ -68,9 +68,7 @@ public List<User> findAllStaffFNB() throws SQLException {
     }
 }
 
-// Lấy staff theo trip (Dùng cho trang Manager)
 public List<User> findByTripId(int tripId) throws SQLException {
-    // (SỬA) Thêm các cột để dùng chung mapUser
     String sql = """
                    SELECT CAST(u.user_id AS NVARCHAR(36)) AS user_id, u.full_name, u.email, u.phone, u.address, u.is_active
                    FROM TripStaff ts
@@ -83,14 +81,13 @@ public List<User> findByTripId(int tripId) throws SQLException {
         try (ResultSet rs = ps.executeQuery()) {
             List<User> list = new ArrayList<>();
             while (rs.next()) {
-                list.add(mapUser(rs)); // (Dùng hàm helper)
+                list.add(mapUser(rs));
             }
             return list;
         }
     }
 }
 
-// Gán staff cho trip (xóa cũ + thêm mới) - (Dùng cho trang Manager)
 public void assignStaffToTrip(int tripId, List<String> staffIds, String staffRole) throws SQLException {
     
     // (SỬA) Chỉ xóa staff có vai trò staffRole, không xóa hết
@@ -136,10 +133,6 @@ public void assignStaffToTrip(int tripId, List<String> staffIds, String staffRol
         }
     }
 }
-
-// =====================================================================
-// ==> HÀM MỚI (Dùng cho StaffOrderServlet)
-// =====================================================================
 
 // (Hàm helper để map Trip, dùng model Trip bạn đã cung cấp)
 private Trip mapTrip(ResultSet rs) throws SQLException {
