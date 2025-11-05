@@ -1,6 +1,7 @@
 package vn.ttapp.model;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 public class User {
@@ -14,7 +15,7 @@ public class User {
     private boolean active;
     private Instant createdAt;
     private Instant updatedAt;
-
+    private List<Role> roles; // <-- THÊM TRƯỜNG MỚI ĐỂ CHỨA VAI TRÒ
     public UUID getUserId() {
         return userId;
     }
@@ -86,4 +87,13 @@ public class User {
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
     }
+
+    public List<Role> getRoles() {
+        return roles;
+    }
+
+    public void setRoles(List<Role> roles) {
+        this.roles = roles;
+    }
+    
 }

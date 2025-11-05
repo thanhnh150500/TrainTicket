@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Context path="">
+<Context path="/TrainTicketBooking">
     <!-- JDBC DataSource: jdbc/TrainDB -->
     <Resource auth="Container" 
               driverClassName="com.microsoft.sqlserver.jdbc.SQLServerDriver" 
@@ -10,7 +10,7 @@
               maxWaitMillis="10000" 
               minEvictableIdleTimeMillis="600000" 
               minIdle="5" name="jdbc/TrainDB" 
-              password="admin" 
+              password="sa" 
               removeAbandonedOnBorrow="true" 
               removeAbandonedTimeout="60" 
               testOnBorrow="true" 
@@ -18,7 +18,7 @@
               timeBetweenEvictionRunsMillis="30000" 
               type="javax.sql.DataSource" 
               url="jdbc:sqlserver://localhost:1433;databaseName=TrainDB;encrypt=true;trustServerCertificate=true" 
-              username="bean2k" 
+              username="sa" 
               validationQuery="SELECT 1" 
               validationQueryTimeout="5"/>
     <Resource

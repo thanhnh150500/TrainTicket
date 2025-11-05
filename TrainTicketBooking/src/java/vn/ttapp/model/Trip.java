@@ -18,6 +18,7 @@ public class Trip {
     private String destName;
     private String trainCode;
     private String trainName;
+    private String departAtStr;
     public Trip() {
     }
 
@@ -116,6 +117,14 @@ public class Trip {
 
     public void setTrainName(String trainName) {
         this.trainName = trainName;
+    }
+
+    public String getDepartAtStr() {
+        return departAtStr;
+    }
+
+    public void setDepartAtStr(String departAtStr) {
+        this.departAtStr = departAtStr;
     }
     
 }

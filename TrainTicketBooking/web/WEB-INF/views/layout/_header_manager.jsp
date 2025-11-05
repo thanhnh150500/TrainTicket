@@ -1,11 +1,13 @@
 <%@ page pageEncoding="UTF-8" contentType="text/html; charset=UTF-8" %>
-<%@taglib prefix="c"  uri="jakarta.tags.core"%>
+<%@taglib prefix="c" uri="jakarta.tags.core"%>
 <%@taglib prefix="fn" uri="jakarta.tags.functions"%>
 
 <c:set var="ctx" value="${pageContext.request.contextPath}" />
 <c:set var="uri" value="${pageContext.request.requestURI}" />
 
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="${ctx}/assets/css/main.css">
+<link rel="stylesheet" href="${ctx}/assets/css/theme.css">
 
 <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top tt-nav border-bottom">
     <div class="container">
@@ -64,23 +66,26 @@
                         <li><a class="dropdown-item" href="${ctx}/manager/carriages">Toa</a></li>
                         <li><a class="dropdown-item" href="${ctx}/manager/seat-classes">Hạng ghế</a></li>
                         <li><a class="dropdown-item" href="${ctx}/manager/seats">Sơ đồ ghế</a></li>
+                        <li><a class="dropdown-item" href="${ctx}/manager/fnb-items">Đồ Order</a></li>
+                        <li><a class="dropdown-item" href="${ctx}/manager/fnb-categories">Loại dịch vụ</a></li>
                     </ul>
                 </li>
 
                 <!-- Reports -->
                 <li class="nav-item">
-                    <a class="nav-link ${ fn:contains(uri,'/manager/reports') ? 'active' : '' }"
-                       href="${ctx}/manager/reports">Báo cáo</a>
+                    <a class="nav-link ${ fn:contains(uri,'/manager/fnb-orders') ? 'active' : '' }"
+                       href="${ctx}/manager/fnb-orders">Đơn F&B</a>
                 </li>
             </ul>
 
             <!-- Right (user) -->
             <ul class="navbar-nav align-items-lg-center mb-2 mb-lg-0">
                 <c:choose>
-                    <c:when test="${not empty sessionScope.authUser}">
+                    <c:when test="${not empty sessionScope.AUTH_USER}">
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-person-circle me-1"></i>${sessionScope.authUser.fullName}
+                           
+                                <i class="bi bi-person-circle me-1"></i>${sessionScope.AUTH_USER.fullName}
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a class="dropdown-item" href="${ctx}/profile">Tài khoản</a></li>
@@ -111,9 +116,12 @@
             </ul>
         </div>
     </div>
+
+
 </nav>
 
 <!-- chừa khoảng cho sticky-top -->
+
 <div style="height:56px;"></div>
 
 <style>

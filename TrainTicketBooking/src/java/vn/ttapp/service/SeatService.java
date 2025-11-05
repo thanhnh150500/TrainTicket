@@ -116,8 +116,8 @@ public class SeatService {
         if (!seatBelongsToTrip(seatId, tripId)) {
             return null;
         }
-        var lockIds = dao.lockSeats(tripId, Collections.singletonList(seatId), bookingIdOrNull, ttlMinutes);
-        return (lockIds != null && !lockIds.isEmpty()) ? lockIds.get(0) : null;
+    List<Integer> lockIds = dao.lockSeats(tripId, Collections.singletonList(seatId), bookingIdOrNull, ttlMinutes);
+    return (lockIds != null && !lockIds.isEmpty()) ? lockIds.get(0) : null;
     }
 
     public List<Integer> holdSeats(int tripId, List<Integer> seatIds, Long bookingIdOrNull, int ttlMinutes) throws SQLException {
@@ -237,5 +237,18 @@ public class SeatService {
         LayoutRule(int seatsPerRow) {
             this.seatsPerRow = seatsPerRow;
         }
+    }
+    
+    public List<SeatView> getSeatMapWithAvailability(int tripId) throws SQLException {
+        // ✅ YÊU CẦU: SeatDao.getSeatsWithAvailability cũng trả List<SeatView>
+        return dao.getSeatsWithAvailability(tripId);
+    }
+
+    /**
+     * Tìm ghế theo tripId và mã ghế (code). Trả về Seat hoặc null.
+     */
+    public vn.ttapp.model.Seat findByTripAndCode(int tripId, String code) throws SQLException {
+        if (code == null || code.isBlank()) return null;
+        return dao.findByTripAndCode(tripId, code.trim());
     }
 }
