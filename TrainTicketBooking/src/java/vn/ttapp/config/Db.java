@@ -2,20 +2,11 @@ package vn.ttapp.config;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
-import javax.sql.DataSource;       // ✅ Dùng chuẩn JNDI
+import javax.sql.DataSource; 
 import java.sql.Connection;
 import java.sql.SQLException;
 
 
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
-
-/**
- *
- * @author New User
- */
 public class Db {
     private static volatile DataSource ds;
 

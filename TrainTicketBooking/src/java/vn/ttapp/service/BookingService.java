@@ -90,12 +90,6 @@ public class BookingService {
         );
     }
 
-    /**
-     * Phiên bản khuyến nghị: gắn userId vào booking để lịch sử theo user hoạt
-     * động đúng. Cần có method tương ứng trong BookingDao (ví dụ:
-     * createDraftWithItemsForUser(UUID,...)). Nếu bạn đã thêm method đó trong
-     * DAO, hãy dùng hàm này thay vì hàm trên.
-     */
     public Booking createDraftFromHoldsForUser(
             UUID userId,
             String contactEmail,
@@ -154,7 +148,6 @@ public class BookingService {
             items.add(bi);
         }
 
-        // 🔽 Bạn cần triển khai method này trong BookingDao (không bắt buộc nếu bạn vẫn muốn để user_id = NULL)
         if (bookingDao instanceof vn.ttapp.dao.BookingDao.Impl impl
                 && hasCreateForUser(impl)) {
             // Gọi bằng reflection để không phá interface, hoặc bạn có thể chính thức thêm vào interface.

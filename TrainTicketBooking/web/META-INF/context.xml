@@ -10,7 +10,7 @@
               maxWaitMillis="10000" 
               minEvictableIdleTimeMillis="600000" 
               minIdle="5" name="jdbc/TrainDB" 
-              password="sa" 
+              password="admin" 
               removeAbandonedOnBorrow="true" 
               removeAbandonedTimeout="60" 
               testOnBorrow="true" 
@@ -18,7 +18,7 @@
               timeBetweenEvictionRunsMillis="30000" 
               type="javax.sql.DataSource" 
               url="jdbc:sqlserver://localhost:1433;databaseName=TrainDB;encrypt=true;trustServerCertificate=true" 
-              username="sa" 
+              username="bean2k" 
               validationQuery="SELECT 1" 
               validationQueryTimeout="5"/>
     <Resource

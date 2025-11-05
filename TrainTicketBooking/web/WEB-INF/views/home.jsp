@@ -5,26 +5,25 @@
 <%
   String ctx = request.getContextPath();
   String today = java.time.LocalDate.now().toString();
-  String here = request.getRequestURI() + (request.getQueryString() == null ? "" : "?" + request.getQueryString());
 %>
+
 <!DOCTYPE html>
 <html lang="vi">
     <head>
         <meta charset="UTF-8">
         <title>Trang chủ | Đặt vé tàu</title>
 
-        <!-- Bootstrap core -->
+        <!-- Bootstrap -->
         <link rel="stylesheet" href="<%=ctx%>/assets/bootstrap/css/bootstrap.min.css">
-        <!-- Bootstrap Icons (để dùng bi bi-*) -->
         <link rel="stylesheet" href="<%=ctx%>/assets/icons/bootstrap-icons.min.css">
 
-        <!-- Custom home page overrides -->
+        <!-- Custom -->
         <link rel="stylesheet" href="<%=ctx%>/assets/css/home.css">
     </head>
     <body>
         <%@ include file="/WEB-INF/views/layout/_header.jsp" %>
 
-        <!-- ============ SECTION 1: SEARCH TRIP ============ -->
+        <!-- ===== SECTION 1: SEARCH ===== -->
         <section class="voy-hero py-5 bg-light">
             <div class="container">
                 <div class="row g-4 align-items-center">
@@ -32,22 +31,24 @@
                         <h1 class="fw-bold mb-2">Tìm & đặt vé tàu nhanh chóng</h1>
                         <p class="text-muted mb-4">Chọn chuyến, chọn ghế, thanh toán an toàn — tất cả trong vài bước.</p>
 
-                        <!-- FORM -->
                         <div class="card shadow-sm border-0 p-3 rounded-4">
-                            <ul class="nav nav-pills gap-2 mb-3" id="tripTypeTabs">
+                            <ul class="nav nav-pills gap-2 mb-3">
                                 <li class="nav-item">
-                                    <button class="btn btn-outline-primary active" id="tab-oneway" data-bs-toggle="pill" type="button">Một chiều</button>
+                                    <button class="btn btn-outline-primary active" id="tab-oneway" type="button">Một chiều</button>
                                 </li>
                                 <li class="nav-item">
-                                    <button class="btn btn-outline-primary" id="tab-round" data-bs-toggle="pill" type="button">Khứ hồi</button>
+                                    <button class="btn btn-outline-primary" id="tab-round" type="button">Khứ hồi</button>
                                 </li>
                             </ul>
 
-                            <form id="tripSearchForm" action="<%=ctx%>/tripsearch" method="post" novalidate>
+                            <form id="tripSearchForm" action="<%=ctx%>/tripsearch" method="post" novalidate autocomplete="off">
                                 <input type="hidden" name="_csrf" value="${sessionScope.csrfToken}"/>
                                 <input type="hidden" name="tripType" id="tripType" value="ONEWAY"/>
+                                <input type="hidden" name="originId" id="originId"/>
+                                <input type="hidden" name="destId" id="destId"/>
 
                                 <div class="row g-3">
+
                                     <!-- Ga đi -->
                                     <div class="col-md-6">
                                         <div class="input-group">
@@ -91,19 +92,20 @@
 
                                     <!-- Submit -->
                                     <div class="col-12 text-end">
-                                        <!-- Nếu muốn login ở đây: truyền next=URL hiện tại -->
-                                        <!-- <a class="btn btn-outline-secondary me-2" href="<%=ctx%>/auth/login?next=<%= java.net.URLEncoder.encode(here, java.nio.charset.StandardCharsets.UTF_8) %>">Đăng nhập</a> -->
                                         <button class="btn btn-primary px-4" type="submit">Tìm chuyến</button>
                                     </div>
                                 </div>
 
+                                <!-- Datalist -->
                                 <datalist id="stationList">
                                     <c:forEach var="s" items="${stations}">
-                                        <!-- value là tên hiển thị; bạn có thể thêm data-* nếu cần code -->
-                                        <option value="${s.name}">${s.name}</option>
+                                        <option value="${s.name}" data-id="${s.stationId}" data-code="${s.code}">
+                                            ${s.name} (${s.code})
+                                        </option>
                                     </c:forEach>
                                 </datalist>
 
+                                <!-- Messages -->
                                 <c:if test="${not empty sessionScope.error}">
                                     <div class="alert alert-danger mt-3">${sessionScope.error}</div>
                                     <c:remove var="error" scope="session"/>
@@ -112,6 +114,7 @@
                                     <div class="alert alert-success mt-3">${sessionScope.message}</div>
                                     <c:remove var="message" scope="session"/>
                                 </c:if>
+
                             </form>
                         </div>
                     </div>
@@ -123,7 +126,7 @@
             </div>
         </section>
 
-        <!-- ============ SECTION 2: DEAL TÀU GIÁ RẺ ============ -->
+        <!-- ===== SECTION 2: DEALS ===== -->
         <section class="sec py-5">
             <div class="container">
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -151,7 +154,7 @@
             </div>
         </section>
 
-        <!-- ============ SECTION 3: BÀI VIẾT NỔI BẬT ============ -->
+        <!-- ===== SECTION 3: BLOG ===== -->
         <section class="sec py-5 bg-light">
             <div class="container">
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -176,7 +179,7 @@
             </div>
         </section>
 
-        <!-- ============ SECTION 4: ĐỐI TÁC ============ -->
+        <!-- ===== SECTION 4: PARTNERS ===== -->
         <section class="sec py-5">
             <div class="container">
                 <h2 class="h5 fw-bold mb-3">Đối tác vận hành</h2>
@@ -194,40 +197,6 @@
 
         <!-- JS -->
         <script src="<%=ctx%>/assets/bootstrap/js/bootstrap.bundle.min.js"></script>
-        <script>
-            const tabOneway = document.getElementById('tab-oneway');
-            const tabRound = document.getElementById('tab-round');
-            const tripType = document.getElementById('tripType');
-            const returnDate = document.getElementById('returnDate');
-            const clearReturnBtn = document.getElementById('clearReturnBtn');
-            const origin = document.getElementById('originStation');
-            const dest = document.getElementById('destStation');
-            const swapBtn = document.getElementById('swapBtn');
-
-            tabOneway?.addEventListener('click', () => {
-                tripType.value = 'ONEWAY';
-                returnDate.value = '';
-                returnDate.disabled = true;
-                tabOneway.classList.add('active');
-                tabRound.classList.remove('active');
-            });
-
-            tabRound?.addEventListener('click', () => {
-                tripType.value = 'ROUND';
-                returnDate.disabled = false;
-                tabRound.classList.add('active');
-                tabOneway.classList.remove('active');
-            });
-
-            clearReturnBtn?.addEventListener('click', () => {
-                returnDate.value = '';
-            });
-
-            swapBtn?.addEventListener('click', () => {
-                const a = origin.value;
-                origin.value = dest.value;
-                dest.value = a;
-            });
-        </script>
+        <script src="<%=ctx%>/assets/js/home.js"></script>
     </body>
 </html>

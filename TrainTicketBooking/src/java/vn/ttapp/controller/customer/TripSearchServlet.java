@@ -31,9 +31,12 @@ public class TripSearchServlet extends HttpServlet {
         response.sendRedirect(request.getContextPath() + "/home");
     }
 
-    // Lenient date parser: accept yyyy-MM-dd (ISO) or dd/MM/yyyy
+    /* ---------- helpers ---------- */
+    // yyyy-MM-dd hoặc dd/MM/yyyy
     private LocalDate parseDateLenient(String s) {
-        if (s == null) return null;
+        if (s == null) {
+            return null;
+        }
         s = s.trim();
         List<DateTimeFormatter> fmts = List.of(
                 DateTimeFormatter.ISO_LOCAL_DATE,
@@ -48,9 +51,11 @@ public class TripSearchServlet extends HttpServlet {
         return null;
     }
 
-    // Lenient time parser: accept HH:mm or HH:mm:ss (and variants)
+    // HH:mm, HH:mm:ss, H:mm
     private LocalTime parseTimeLenient(String s) {
-        if (s == null) return null;
+        if (s == null) {
+            return null;
+        }
         s = s.trim();
         List<DateTimeFormatter> fmts = List.of(
                 DateTimeFormatter.ISO_LOCAL_TIME,
@@ -66,76 +71,114 @@ public class TripSearchServlet extends HttpServlet {
         return null;
     }
 
+    private static Integer parseIntOrNull(String s) {
+        if (s == null || s.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(s.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static String trimOrNull(String s) {
+        return (s == null) ? null : s.trim();
+    }
+
+    private static String normalizeTripType(String t) {
+        if (t == null) {
+            return "ONEWAY";
+        }
+        String x = t.trim().toUpperCase(Locale.ROOT);
+        if (x.startsWith("ROUND")) {
+            return "ROUNDTRIP";
+        }
+        return "ONEWAY";
+    }
+
+    /* ---------- main ---------- */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        final String originName = trimOrNull(request.getParameter("originStation"));
-        final String destName = trimOrNull(request.getParameter("destStation"));
-        final String typeRaw = trimOrNull(request.getParameter("tripType"));
+        // Tên người dùng nhập (để lưu session / hiển thị)
+        final String originNameRaw = trimOrNull(request.getParameter("originStation"));
+        final String destNameRaw = trimOrNull(request.getParameter("destStation"));
+
+        // Hidden ID (ưu tiên)
+        final Integer originIdFromForm = parseIntOrNull(request.getParameter("originId"));
+        final Integer destIdFromForm = parseIntOrNull(request.getParameter("destId"));
+
+        final String tripType = normalizeTripType(trimOrNull(request.getParameter("tripType")));
         final String departRaw = trimOrNull(request.getParameter("departDate"));
         final String returnRaw = trimOrNull(request.getParameter("returnDate"));
         final String timeRaw = trimOrNull(request.getParameter("departTime"));
         final String paxRaw = trimOrNull(request.getParameter("pax"));
-        final String tripType = (typeRaw == null || typeRaw.isBlank()) ? "ONEWAY" : typeRaw;
 
         HttpSession ss = request.getSession(true);
-        ss.setAttribute("lastOrigin", originName);
-        ss.setAttribute("lastDest", destName);
+        ss.setAttribute("lastOrigin", originNameRaw);
+        ss.setAttribute("lastDest", destNameRaw);
         ss.setAttribute("lastTripType", tripType);
         ss.setAttribute("lastDepart", departRaw);
         ss.setAttribute("lastReturn", returnRaw);
 
         try {
             // 1) Validate cơ bản
-            if (originName == null || destName == null || departRaw == null) {
+            if ((originNameRaw == null && originIdFromForm == null)
+                    || (destNameRaw == null && destIdFromForm == null)
+                    || departRaw == null) {
                 backWithError(request, response, "Vui lòng nhập ga đi, ga đến và ngày đi.");
                 return;
             }
-            if (originName.equalsIgnoreCase(destName)) {
+
+            if (originNameRaw != null && destNameRaw != null
+                    && originNameRaw.equalsIgnoreCase(destNameRaw)) {
                 backWithError(request, response, "Ga đi và ga đến phải khác nhau.");
                 return;
             }
 
-            // 2) Resolve Station IDs
-            Integer originId = stationDao.findIdByNameExact(originName);
-            Integer destId = stationDao.findIdByNameExact(destName);
+            // 2) Resolve Station IDs (ưu tiên hidden ID)
+            Integer originId = originIdFromForm;
+            Integer destId = destIdFromForm;
+
+            if (originId == null && originNameRaw != null) {
+                originId = stationDao.findIdByNameExact(originNameRaw);
+                if (originId == null) {
+                    originId = stationDao.findIdByNameLoose(originNameRaw);
+                }
+            }
+            if (destId == null && destNameRaw != null) {
+                destId = stationDao.findIdByNameExact(destNameRaw);
+                if (destId == null) {
+                    destId = stationDao.findIdByNameLoose(destNameRaw);
+                }
+            }
+
             if (originId == null || destId == null) {
                 backWithError(request, response, "Không tìm thấy ga đi/ga đến trong hệ thống.");
                 return;
             }
 
-            // 3) Parse ngày giờ
-            LocalDate departDate;
-            LocalDate returnDate = null;
-            LocalTime departTime = null;
-            int pax = 1;
+            // Lấy lại tên chuẩn từ DB (nếu cần) để hiển thị ổn định
+            String originName = (originNameRaw != null) ? originNameRaw : stationDao.findNameById(originId);
+            String destName = (destNameRaw != null) ? destNameRaw : stationDao.findNameById(destId);
 
-            try {
-                departDate = parseDateLenient(departRaw);
-                if (departDate == null) throw new DateTimeParseException("Unparseable date", departRaw, 0);
-            } catch (DateTimeParseException ex) {
+            // 3) Parse ngày giờ
+            LocalDate departDate = parseDateLenient(departRaw);
+            if (departDate == null) {
                 backWithError(request, response, "Ngày đi không hợp lệ. Hãy dùng định dạng yyyy-MM-dd hoặc dd/MM/yyyy.");
                 return;
             }
 
-            if (paxRaw != null && !paxRaw.isBlank()) {
-                try {
-                    pax = Math.max(1, Integer.parseInt(paxRaw));
-                } catch (NumberFormatException ignored) {
-                    pax = 1;
-                }
-            }
-
-            if ("ROUNDTRIP".equalsIgnoreCase(tripType)) {
+            LocalDate returnDate = null;
+            if ("ROUNDTRIP".equals(tripType)) {
                 if (returnRaw == null || returnRaw.isBlank()) {
                     backWithError(request, response, "Bạn chọn khứ hồi. Vui lòng chọn ngày về.");
                     return;
                 }
-                try {
-                    returnDate = parseDateLenient(returnRaw);
-                    if (returnDate == null) throw new DateTimeParseException("Unparseable date", returnRaw, 0);
-                } catch (DateTimeParseException ex) {
+                returnDate = parseDateLenient(returnRaw);
+                if (returnDate == null) {
                     backWithError(request, response, "Ngày về không hợp lệ. Hãy dùng định dạng yyyy-MM-dd hoặc dd/MM/yyyy.");
                     return;
                 }
@@ -145,17 +188,25 @@ public class TripSearchServlet extends HttpServlet {
                 }
             }
 
+            LocalTime departTime = null;
             if (timeRaw != null && !timeRaw.isBlank()) {
-                try {
-                    departTime = parseTimeLenient(timeRaw);
-                    if (departTime == null) throw new DateTimeParseException("Unparseable time", timeRaw, 0);
-                } catch (DateTimeParseException ex) {
+                departTime = parseTimeLenient(timeRaw);
+                if (departTime == null) {
                     backWithError(request, response, "Giờ đi không hợp lệ. Hãy dùng định dạng HH:mm hoặc HH:mm:ss.");
                     return;
                 }
             }
 
-            // 4) Kiểm tra có chuyến
+            int pax = 1;
+            if (paxRaw != null && !paxRaw.isBlank()) {
+                try {
+                    pax = Math.max(1, Integer.parseInt(paxRaw));
+                } catch (NumberFormatException ignore) {
+                    pax = 1;
+                }
+            }
+
+            // 4) Tìm chuyến
             SearchResult sr = tripService.searchTripsByStationIds(
                     tripType, originId, destId, departDate, departTime, returnDate, null);
 
@@ -168,12 +219,11 @@ public class TripSearchServlet extends HttpServlet {
             }
 
             Optional<Trip> chosenInbound = Optional.empty();
-            if ("ROUNDTRIP".equalsIgnoreCase(tripType)
-                    && sr.inbound != null && !sr.inbound.isEmpty()) {
+            if ("ROUNDTRIP".equals(tripType) && sr.inbound != null && !sr.inbound.isEmpty()) {
                 chosenInbound = sr.inbound.stream().min(Comparator.comparing(Trip::getDepartAt));
             }
 
-            // 5) Tạo SearchContext
+            // 5) SearchContext
             SearchContext ctx = new SearchContext();
             ctx.setTripType(tripType);
             ctx.setOriginStationId(originId);
@@ -189,7 +239,7 @@ public class TripSearchServlet extends HttpServlet {
             ss.setAttribute("chosenOutboundTripId", chosenOutbound.get().getTripId());
             ss.setAttribute("chosenInboundTripId", chosenInbound.map(Trip::getTripId).orElse(null));
 
-            // 6) Dữ liệu hiển thị trang danh sách chuyến
+            // 6) Dữ liệu trang danh sách chuyến
             LocalDate viewDate = departDate;
             List<TripCardVm> trips = tripListDao.queryTripsForDate(originId, destId, viewDate);
             List<DayTabVm> days = tripListDao.buildDayTabs(request, viewDate, originId, destId);
@@ -224,9 +274,5 @@ public class TripSearchServlet extends HttpServlet {
             throws IOException {
         req.getSession(true).setAttribute("error", msg);
         resp.sendRedirect(req.getContextPath() + "/home");
-    }
-
-    private static String trimOrNull(String s) {
-        return (s == null) ? null : s.trim();
     }
 }
