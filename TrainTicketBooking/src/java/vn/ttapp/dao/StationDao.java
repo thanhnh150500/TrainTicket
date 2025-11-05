@@ -9,38 +9,6 @@ import java.util.List;
 
 public class StationDao {
 
-    // Accent-insensitive + case-insensitive (phù hợp bộ dữ liệu VN thông dụng)
-    private static final String VN_AI = "SQL_Latin1_General_CP1_CI_AI";
-
-    private static String trimOrNull(String s) {
-        if (s == null) {
-            return null;
-        }
-        String t = s.trim();
-        return t.isEmpty() ? null : t;
-    }
-
-    private static String trimUpperOrNull(String s) {
-        String t = trimOrNull(s);
-        return (t == null) ? null : t.toUpperCase();
-    }
-
-    private static void bindNullableString(PreparedStatement ps, int idx, String v) throws SQLException {
-        if (v == null) {
-            ps.setNull(idx, Types.VARCHAR);
-        } else {
-            ps.setString(idx, v);
-        }
-    }
-
-    private static void bindNullableNString(PreparedStatement ps, int idx, String v) throws SQLException {
-        if (v == null) {
-            ps.setNull(idx, Types.NVARCHAR);
-        } else {
-            ps.setNString(idx, v);
-        }
-    }
-
     private Station map(ResultSet rs) throws SQLException {
         Station s = new Station();
         s.setStationId(rs.getObject("station_id", Integer.class));
@@ -52,9 +20,6 @@ public class StationDao {
         return s;
     }
 
-    /* =========================
-       CRUD
-     ========================= */
     public Station findById(int id) throws SQLException {
         String sql = """
             SELECT s.station_id, s.city_id, s.code, s.name, s.address,
@@ -71,15 +36,7 @@ public class StationDao {
         }
     }
 
-    /**
-     * Tìm theo code
-     */
     public Station findByCode(String code) throws SQLException {
-        String norm = trimUpperOrNull(code);
-        if (norm == null) {
-            return null;
-        }
-
         String sql = """
             SELECT s.station_id, s.city_id, s.code, s.name, s.address,
                    c.name AS city_name
@@ -88,7 +45,7 @@ public class StationDao {
             WHERE UPPER(LTRIM(RTRIM(s.code))) = ?
         """;
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, norm);
+            ps.setString(1, code == null ? null : code.trim().toUpperCase());
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? map(rs) : null;
             }
@@ -113,14 +70,9 @@ public class StationDao {
     }
 
     public boolean codeExists(String code) throws SQLException {
-        String norm = trimUpperOrNull(code);
-        if (norm == null) {
-            return false;
-        }
-
         String sql = "SELECT 1 FROM dbo.Station WHERE UPPER(LTRIM(RTRIM(code))) = ?";
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, norm);
+            ps.setString(1, code == null ? null : code.trim().toUpperCase());
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next();
             }
@@ -134,21 +86,20 @@ public class StationDao {
             VALUES(?, ?, ?, ?)
         """;
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-
             ps.setObject(1, cityId, Types.INTEGER);
-
-            // code & name bắt buộc (nếu bạn muốn optional thì đổi bindNullable*)
-            bindNullableString(ps, 2, trimOrNull(code));
-            bindNullableNString(ps, 3, trimOrNull(name));
-            bindNullableNString(ps, 4, trimOrNull(address));
-
+            ps.setString(2, code);
+            ps.setNString(3, name);
+            if (address == null || address.isBlank()) {
+                ps.setNull(4, Types.NVARCHAR);
+            } else {
+                ps.setNString(4, address);
+            }
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     return rs.getInt(1);
                 }
             }
         }
-        // fallback nếu OUTPUT không chạy
         Station s = findByCode(code);
         return s != null ? s.getStationId() : null;
     }
@@ -161,9 +112,13 @@ public class StationDao {
         """;
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setObject(1, s.getCityId(), Types.INTEGER);
-            bindNullableString(ps, 2, trimOrNull(s.getCode()));
-            bindNullableNString(ps, 3, trimOrNull(s.getName()));
-            bindNullableNString(ps, 4, trimOrNull(s.getAddress()));
+            ps.setString(2, s.getCode());
+            ps.setNString(3, s.getName());
+            if (s.getAddress() == null || s.getAddress().isBlank()) {
+                ps.setNull(4, Types.NVARCHAR);
+            } else {
+                ps.setNString(4, s.getAddress());
+            }
             ps.setObject(5, s.getStationId(), Types.INTEGER);
             return ps.executeUpdate();
         }
@@ -176,69 +131,47 @@ public class StationDao {
         }
     }
 
-    /* =========================
-       Resolve by name
-     ========================= */
-    /**
-     * Exact theo tên
-     */
+    /* ===== Exact theo tên (bỏ dấu, không phân biệt hoa/thường) ===== */
     public Station findByNameExact(String name) throws SQLException {
-        String n = trimOrNull(name);
-        if (n == null) {
-            return null;
-        }
-
         String sql = """
             SELECT s.station_id, s.city_id, s.code, s.name, s.address, c.name AS city_name
             FROM dbo.Station s
             JOIN dbo.City c ON c.city_id = s.city_id
-            WHERE LTRIM(RTRIM(s.name)) COLLATE """ + VN_AI + " = ?\n";
-
+            WHERE LTRIM(RTRIM(s.name)) COLLATE SQL_Latin1_General_CP1_CI_AI = ?
+        """;
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-            bindNullableNString(ps, 1, n);
+            ps.setNString(1, name == null ? null : name.trim());
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? map(rs) : null;
             }
         }
     }
 
-    /**
-     * Trả về ID theo tên (exact).
-     */
     public Integer findIdByNameExact(String name) throws SQLException {
-        String n = trimOrNull(name);
-        if (n == null) {
-            return null;
-        }
-
         String sql = """
             SELECT station_id
             FROM dbo.Station
-            WHERE LTRIM(RTRIM(name)) COLLATE """ + VN_AI + " = ?\n";
-
+            WHERE LTRIM(RTRIM(name)) COLLATE SQL_Latin1_General_CP1_CI_AI = ?
+        """;
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-            bindNullableNString(ps, 1, n);
+            ps.setNString(1, name == null ? null : name.trim());
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getInt(1) : null;
             }
         }
     }
 
-    /**
-     * Fallback “loose”: ưu tiên bắt đầu bằng, sau đó chứa bất kỳ; match
-     * name/city/code. Hỗ trợ code dạng GA01..GA63 hoặc chỉ số (01 -> GA01%).
-     */
+    /* ===== Fallback “loose” theo tên/tỉnh/mã ===== */
     public Integer findIdByNameLoose(String input) throws SQLException {
-        String term = trimOrNull(input);
-        if (term == null) {
+        if (input == null || input.isBlank()) {
             return null;
         }
 
+        String term = input.trim();
         String norm = term.replaceAll("\\s+", "");
         String start = term + "%";
         String any = "%" + term + "%";
 
-        // chuẩn hoá pattern code
         String codePrefix = norm.toUpperCase();
         String codeLike;
         if (codePrefix.matches("^GA\\d{1,3}$")) {
@@ -254,47 +187,39 @@ public class StationDao {
         String sql = """
             SELECT TOP (1) s.station_id,
                    CASE
-                     WHEN s.name COLLATE """ + VN_AI + " LIKE ? THEN 0\n"
-                + "  WHEN c.name COLLATE " + VN_AI + " LIKE ? THEN 1\n"
-                + "  WHEN s.name COLLATE " + VN_AI + " LIKE ? THEN 2\n"
-                + "  WHEN c.name COLLATE " + VN_AI + " LIKE ? THEN 3\n"
-                + "  WHEN UPPER(LTRIM(RTRIM(s.code))) LIKE ? THEN 4\n"
-                + "  ELSE 9 END AS score\n"
-                + "FROM dbo.Station s\n"
-                + "JOIN dbo.City c ON c.city_id = s.city_id\n"
-                + "WHERE s.name COLLATE " + VN_AI + " LIKE ?\n"
-                + "   OR c.name COLLATE " + VN_AI + " LIKE ?\n"
-                + "   OR UPPER(LTRIM(RTRIM(s.code))) LIKE ?\n"
-                + "ORDER BY score, s.name\n";
+                     WHEN s.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? THEN 0
+                     WHEN c.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? THEN 1
+                     WHEN s.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? THEN 2
+                     WHEN c.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? THEN 3
+                     WHEN UPPER(LTRIM(RTRIM(s.code))) LIKE ? THEN 4
+                     ELSE 9
+                   END AS score
+            FROM dbo.Station s
+            JOIN dbo.City c ON c.city_id = s.city_id
+            WHERE s.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?
+               OR c.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?
+               OR UPPER(LTRIM(RTRIM(s.code))) LIKE ?
+            ORDER BY score, s.name
+        """;
 
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-
-            // ORDER score params
-            bindNullableNString(ps, 1, start);
-            bindNullableNString(ps, 2, start);
-            bindNullableNString(ps, 3, any);
-            bindNullableNString(ps, 4, any);
-            bindNullableString(ps, 5, codeLike);
-
-            // WHERE params
-            bindNullableNString(ps, 6, any);
-            bindNullableNString(ps, 7, any);
-            bindNullableString(ps, 8, codeLike);
-
+            ps.setNString(1, start);
+            ps.setNString(2, start);
+            ps.setNString(3, any);
+            ps.setNString(4, any);
+            ps.setString(5, codeLike);
+            ps.setNString(6, any);
+            ps.setNString(7, any);
+            ps.setString(8, codeLike);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getInt(1) : null;
             }
         }
     }
 
-    /* =========================
-       Suggest (autocomplete)
-     ========================= */
+    /* ===== Suggest autocomplete ===== */
     public List<Station> suggestByNameOrCode(String q, int limit) throws SQLException {
-        String term = trimOrNull(q);
-        if (term == null) {
-            term = ""; // allow full list on empty
-        }
+        String term = (q == null) ? "" : q.trim();
         String norm = term.replaceAll("\\s+", "");
         String start = term + "%";
         String word = "% " + term + "%";
@@ -316,38 +241,40 @@ public class StationDao {
         String sql = """
             SELECT TOP (?) s.station_id, s.city_id, s.code, s.name, s.address, c.name AS city_name,
                    CASE
-                     WHEN s.name COLLATE """ + VN_AI + " LIKE ? THEN 0\n"
-                + "  WHEN c.name COLLATE " + VN_AI + " LIKE ? THEN 1\n"
-                + "  WHEN s.name COLLATE " + VN_AI + " LIKE ? THEN 2\n"
-                + "  WHEN c.name COLLATE " + VN_AI + " LIKE ? THEN 3\n"
-                + "  WHEN UPPER(LTRIM(RTRIM(s.code))) LIKE ? THEN 4\n"
-                + "  WHEN s.name COLLATE " + VN_AI + " LIKE ? THEN 5\n"
-                + "  WHEN c.name COLLATE " + VN_AI + " LIKE ? THEN 6\n"
-                + "  ELSE 9 END AS score\n"
-                + "FROM dbo.Station s\n"
-                + "JOIN dbo.City c ON c.city_id = s.city_id\n"
-                + "WHERE s.name COLLATE " + VN_AI + " LIKE ?\n"
-                + "   OR c.name COLLATE " + VN_AI + " LIKE ?\n"
-                + "   OR UPPER(LTRIM(RTRIM(s.code))) LIKE ?\n"
-                + "ORDER BY score, c.name, s.name\n";
+                     WHEN s.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? THEN 0
+                     WHEN c.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? THEN 1
+                     WHEN s.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? THEN 2
+                     WHEN c.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? THEN 3
+                     WHEN UPPER(LTRIM(RTRIM(s.code))) LIKE ? THEN 4
+                     WHEN s.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? THEN 5
+                     WHEN c.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? THEN 6
+                     ELSE 9
+                   END AS score
+            FROM dbo.Station s
+            JOIN dbo.City c ON c.city_id = s.city_id
+            WHERE s.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?
+               OR c.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?
+               OR UPPER(LTRIM(RTRIM(s.code))) LIKE ?
+            ORDER BY score, c.name, s.name
+        """;
 
         List<Station> out = new ArrayList<>();
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, lim);
 
-            // ORDER score params
-            bindNullableNString(ps, 2, start);
-            bindNullableNString(ps, 3, start);
-            bindNullableNString(ps, 4, word);
-            bindNullableNString(ps, 5, word);
-            bindNullableString(ps, 6, codeLike);
-            bindNullableNString(ps, 7, any);
-            bindNullableNString(ps, 8, any);
+            // For ORDER score
+            ps.setNString(2, start);
+            ps.setNString(3, start);
+            ps.setNString(4, word);
+            ps.setNString(5, word);
+            ps.setString(6, codeLike);
+            ps.setNString(7, any);
+            ps.setNString(8, any);
 
             // WHERE params
-            bindNullableNString(ps, 9, any);
-            bindNullableNString(ps, 10, any);
-            bindNullableString(ps, 11, codeLike);
+            ps.setNString(9, any);
+            ps.setNString(10, any);
+            ps.setString(11, codeLike);
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -358,9 +285,6 @@ public class StationDao {
         return out;
     }
 
-    /* =========================
-       Other filters
-     ========================= */
     public List<Station> findByRegionCode(String regionCode) throws SQLException {
         String sql = """
             SELECT s.station_id, s.city_id, s.code, s.name, s.address, c.name AS city_name
@@ -372,7 +296,7 @@ public class StationDao {
         """;
         List<Station> list = new ArrayList<>();
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-            bindNullableString(ps, 1, trimOrNull(regionCode));
+            ps.setString(1, regionCode);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     list.add(map(rs));
@@ -412,18 +336,10 @@ public class StationDao {
         }
     }
 
-    /**
-     * Trả về ID theo code (trim + upper; an toàn null).
-     */
     public Integer findIdByCode(String code) throws SQLException {
-        String norm = trimUpperOrNull(code);
-        if (norm == null) {
-            return null;
-        }
-
         String sql = "SELECT station_id FROM dbo.Station WHERE UPPER(LTRIM(RTRIM(code))) = ?";
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, norm);
+            ps.setString(1, code == null ? null : code.trim().toUpperCase());
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getInt(1) : null;
             }
