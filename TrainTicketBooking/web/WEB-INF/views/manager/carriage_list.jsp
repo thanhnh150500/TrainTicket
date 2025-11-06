@@ -33,10 +33,10 @@
                 <c:forEach items="${list}" var="x">
                     <tr>
                         <td>${x.carriageId}</td>
-                        <td><c:out value="${x.trainCode}"/> <small class="text-muted">(<c:out value="${x.trainName}"/>)</small></td>
-                        <td><c:out value="${x.code}"/></td>
-                        <td><c:out value="${x.seatClassName}"/> <small class="text-muted">(<c:out value="${x.seatClassCode}"/>)</small></td>
-                        <td><c:out value="${x.sortOrder}"/></td>
+                        <td>${x.trainCode} <small class="text-muted">(${x.trainName})</small></td>
+                        <td>${x.code}</td>
+                        <td>${x.seatClassName} <small class="text-muted">(${x.seatClassCode})</small></td>
+                        <td>${x.sortOrder}</td>
                         <td class="d-flex gap-2">
                             <a class="btn btn-sm btn-outline-secondary"
                                href="${pageContext.request.contextPath}/manager/carriages?op=edit&id=${x.carriageId}">Sửa</a>
@@ -80,11 +80,11 @@
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
         <script>
-                                            [document.getElementById('toast-success'), document.getElementById('toast-error')]
-                                                    .forEach(el => {
-                                                        if (el)
-                                                            new bootstrap.Toast(el, {delay: 2500, autohide: true}).show();
-                                                    });
+                                [document.getElementById('toast-success'), document.getElementById('toast-error')]
+                                        .forEach(el => {
+                                            if (el)
+                                                new bootstrap.Toast(el, {delay: 2500, autohide: true}).show();
+                                        });
         </script>
     </body>
 </html>

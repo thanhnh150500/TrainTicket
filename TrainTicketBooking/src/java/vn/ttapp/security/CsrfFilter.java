@@ -1,41 +1,49 @@
 package vn.ttapp.security;
 
-import jakarta.servlet.Filter;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.FilterConfig;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.*;
+import jakarta.servlet.http.*;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 
 public class CsrfFilter implements Filter {
 
     private static final Set<String> SAFE_METHODS = Set.of("GET", "HEAD", "OPTIONS");
+
+    private final Set<String> defaultExcludePrefixes = Set.of(
+            "/assets/", "/static/", "/favicon", "/robots.txt"
+    );
+
     private final Set<String> excludePrefixes = new HashSet<>();
+    private final Set<String> excludeExact = new HashSet<>();
+
+    private static final String CSRF_SESSION_KEY = "csrfToken";
+    private static final String CSRF_HEADER = "X-CSRF-Token";
+    private static final String CSRF_PARAM = "_csrf";
+    private static final String CSRF_COOKIE = "CSRF-TOKEN";
 
     @Override
-    public void init(FilterConfig cfg) throws ServletException {
-        // Các prefix tài nguyên tĩnh mặc định
-        excludePrefixes.add("/assets/");
-        excludePrefixes.add("/static/");
-        excludePrefixes.add("/favicon");
-        excludePrefixes.add("/images/");
-        excludePrefixes.add("/css/");
-        excludePrefixes.add("/js/");
-        excludePrefixes.add("/webjars/");
+    public void init(FilterConfig cfg) {
+        // nạp mặc định
+        excludePrefixes.addAll(defaultExcludePrefixes);
 
-        String extra = cfg.getInitParameter("excludePrefixes");
-        if (extra != null && !extra.isBlank()) {
-            for (String p : extra.split(",")) {
-                String v = p.trim();
-                if (!v.isEmpty()) {
-                    excludePrefixes.add(v.startsWith("/") ? v : "/" + v);
+        String extraPrefixes = cfg.getInitParameter("excludePrefixes");
+        if (extraPrefixes != null && !extraPrefixes.isBlank()) {
+            for (String p : extraPrefixes.split(",")) {
+                p = p.trim();
+                if (!p.isEmpty()) {
+                    excludePrefixes.add(p.startsWith("/") ? p : ("/" + p));
+                }
+            }
+        }
+
+        String extraExact = cfg.getInitParameter("excludeExact");
+        if (extraExact != null && !extraExact.isBlank()) {
+            for (String p : extraExact.split(",")) {
+                p = p.trim();
+                if (!p.isEmpty()) {
+                    excludeExact.add(p.startsWith("/") ? p : ("/" + p));
                 }
             }
         }
@@ -47,37 +55,52 @@ public class CsrfFilter implements Filter {
 
         HttpServletRequest r = (HttpServletRequest) req;
         HttpServletResponse w = (HttpServletResponse) res;
-        String ctx = r.getContextPath();
-        String uri = r.getRequestURI();
 
-        // 1) Bỏ qua các đường dẫn tĩnh/được exclude
-        for (String prefix : excludePrefixes) {
-            if (uri.startsWith(ctx + prefix)) {
+        HttpSession ss = r.getSession(true);
+        String tokenInSession = (String) ss.getAttribute(CSRF_SESSION_KEY);
+        if (tokenInSession == null || tokenInSession.isBlank()) {
+            tokenInSession = UUID.randomUUID().toString();
+            ss.setAttribute(CSRF_SESSION_KEY, tokenInSession);
+        }
+
+        Cookie c = new Cookie(CSRF_COOKIE, URLEncoder.encode(tokenInSession, StandardCharsets.UTF_8));
+        c.setHttpOnly(false);
+        c.setPath(r.getContextPath().isEmpty() ? "/" : r.getContextPath());
+        c.setSecure(r.isSecure()); 
+        w.addCookie(c);
+
+        final String method = r.getMethod();
+        if (SAFE_METHODS.contains(method)) {
+            chain.doFilter(req, res);
+            return;
+        }
+
+        final String ctx = r.getContextPath();        
+        final String uri = r.getRequestURI();           
+        final String path = uri.startsWith(ctx) ? uri.substring(ctx.length()) : uri;
+
+        for (String p : excludePrefixes) {
+            if (path.startsWith(p)) {
                 chain.doFilter(req, res);
                 return;
             }
         }
-
-        // 2) Luôn đảm bảo có CSRF token trong session để JSP render form
-        HttpSession ss = r.getSession(true);
-        if (ss.getAttribute("csrfToken") == null) {
-            ss.setAttribute("csrfToken", UUID.randomUUID().toString());
+        if (excludeExact.contains(path)) {
+            chain.doFilter(req, res);
+            return;
         }
 
-        // 3) Chỉ kiểm tra với các phương thức không an toàn
-        String method = r.getMethod();
-        if (!SAFE_METHODS.contains(method)) {
-            // Token từ form field hoặc từ header
-            String tokenFromRequest = r.getParameter("_csrf");
-            if (tokenFromRequest == null || tokenFromRequest.isBlank()) {
-                tokenFromRequest = r.getHeader("X-CSRF-Token");
-            }
-            String tokenInSession = (String) ss.getAttribute("csrfToken");
+        String token = r.getHeader(CSRF_HEADER);
+        if (token == null || token.isBlank()) {
+            token = r.getParameter(CSRF_PARAM);
+        }
 
-            if (tokenInSession == null || !tokenInSession.equals(tokenFromRequest)) {
-                w.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF token");
-                return;
-            }
+        if (token == null || tokenInSession == null || !tokenInSession.equals(token)) {
+            // 403 với thông điệp rõ ràng cho dev
+            w.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            w.setContentType("text/plain; charset=UTF-8");
+            w.getWriter().write("Invalid CSRF token");
+            return;
         }
 
         chain.doFilter(req, res);

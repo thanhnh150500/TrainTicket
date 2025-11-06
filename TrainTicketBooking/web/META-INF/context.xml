@@ -1,4 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Context path="/TrainTicketBooking">
-    <Resource auth="Container" driverClassName="com.microsoft.sqlserver.jdbc.SQLServerDriver" factory="org.apache.tomcat.jdbc.pool.DataSourceFactory" maxIdle="10" maxTotal="50" maxWaitMillis="10000" name="jdbc/TrainDB" password="sa" type="javax.sql.DataSource" url="jdbc:sqlserver://localhost:1433;databaseName=TrainDB;encrypt=true;trustServerCertificate=true;" username="sa"/>
+
+    <!-- JDBC DataSource: jdbc/TrainDB -->
+    <Resource
+        name="jdbc/TrainDB"
+        auth="Container"
+        type="javax.sql.DataSource"
+        factory="org.apache.tomcat.jdbc.pool.DataSourceFactory"
+        driverClassName="com.microsoft.sqlserver.jdbc.SQLServerDriver"
+        url="jdbc:sqlserver://localhost:1433;databaseName=TrainDB;encrypt=true;trustServerCertificate=true"
+        username="bean2k"
+        password="admin"
+        initialSize="5"
+        maxIdle="10"
+        minIdle="5"
+        maxTotal="30"
+        maxWaitMillis="10000"
+        testOnBorrow="true"
+        testWhileIdle="true"
+        validationQuery="SELECT 1"
+        validationQueryTimeout="5"
+        timeBetweenEvictionRunsMillis="30000"
+        minEvictableIdleTimeMillis="600000"
+        removeAbandonedOnBorrow="true"
+        removeAbandonedTimeout="60"
+        logAbandoned="true"
+    />
+
+    <!-- Mail session (Jakarta Mail) -->
+    <Resource
+        name="mail/Session"
+        auth="Container"
+        type="jakarta.mail.Session"
+        factory="org.apache.naming.factory.MailSessionFactory"
+        mail.smtp.host="smtp.gmail.com"
+        mail.smtp.port="587"
+        mail.smtp.auth="true"
+        mail.smtp.starttls.enable="true"
+        mail.smtp.starttls.required="true"
+        mail.smtp.user="your_email@gmail.com"
+        mail.smtp.password="YOUR_APP_PASSWORD"
+    />
 </Context>

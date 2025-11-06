@@ -1,0 +1,160 @@
+:root {
+    --tt-primary: #0d6efd;
+    --tt-muted: #6c757d;
+    --tt-card: #fff;
+    --tt-border: #e9ecef;
+    --tt-bg: #f6f8fb;
+    --tt-orange: #ff8a00;
+}
+
+body {
+    background: var(--tt-bg);
+    font-family: Inter, Segoe UI, system-ui, sans-serif;
+}
+
+/* ==============================
+   Nút Thanh toán (đã sửa hoàn chỉnh)
+   ============================== */
+.btn-pay {
+    background: var(--tt-orange);
+    color: #fff;
+    border: 0;
+    padding: 12px 22px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: 0.3px;
+    transition: all 0.25s ease;
+    box-shadow: 0 2px 6px rgba(255, 138, 0, 0.25);
+    cursor: pointer;
+}
+
+.btn-pay:hover {
+    background: #ffa733; /* sáng hơn khi hover */
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(255, 138, 0, 0.35);
+}
+
+.btn-pay:active {
+    transform: translateY(0);
+    filter: brightness(0.95);
+    box-shadow: 0 1px 3px rgba(255, 138, 0, 0.2);
+}
+
+.btn-pay:disabled,
+.btn-pay[disabled] {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* ==============================
+   Thẻ và bố cục
+   ============================== */
+.tt-card {
+    background: var(--tt-card);
+    border: 1px solid var(--tt-border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.tt-card-title {
+    font-weight: 700;
+    color: #1c2b38;
+    margin-bottom: 10px;
+    font-size: 1.05rem;
+}
+
+.form-label {
+    font-weight: 600;
+}
+
+/* ==============================
+   Chip hiển thị thông tin ghế
+   ============================== */
+.seat-chip {
+    background: #f8f9fb;
+    border: 1px solid var(--tt-border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+}
+
+.chip-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.chip-label {
+    font-weight: 600;
+    color: #334;
+}
+
+.chip-sub {
+    color: var(--tt-muted);
+    font-size: 0.9rem;
+}
+
+.chip-price {
+    font-weight: 700;
+    color: #111;
+}
+
+/* ==============================
+   Form hành khách
+   ============================== */
+.passenger-card {
+    border: 1px dashed #dde3ea;
+    background: #fff;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 14px;
+}
+
+/* ==============================
+   Thông tin chuyến tàu & tổng tiền
+   ============================== */
+.trip-route {
+    font-size: 1.05rem;
+}
+
+.big-hour {
+    font-size: 1.35rem;
+    font-weight: 700;
+}
+
+.total-strong {
+    color: #ff7a00;
+    font-weight: 800;
+    font-size: 1.25rem;
+}
+
+/* ==============================
+   Tiện ích nhỏ khác
+   ============================== */
+.small {
+    font-size: 0.95rem;
+}
+
+.pay-btn {
+    background-color: #ff8c00;
+    color: #fff;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.pay-btn:hover {
+    background-color: #ffa733;
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.pay-btn:active {
+    transform: translateY(1px);
+    filter: brightness(0.9);
+}

@@ -1,20 +1,25 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
 package vn.ttapp.model;
 
+/**
+ *
+ * @author dotri
+ */
 public class Seat {
+    public Integer seatId;
+    public Integer carriageId;
+    public String  code;
+    public Integer seatClassId;
+    public String  positionInfo;
 
-    private Integer seatId;
-    private Integer carriageId;
-    private String code;
-    private Integer seatClassId;
-    private String positionInfo;
-
-    // view props (JOIN)
     private String seatClassCode;
     private String seatClassName;
     private String carriageCode;
     private String trainCode;
     private String trainName;
-
     public Seat() {
     }
 
@@ -105,4 +110,5 @@ public class Seat {
     public void setTrainName(String trainName) {
         this.trainName = trainName;
     }
+    
 }

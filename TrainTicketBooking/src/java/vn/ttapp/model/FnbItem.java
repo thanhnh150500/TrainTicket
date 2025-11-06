@@ -11,6 +11,7 @@ public class FnbItem {
     private String code;
     private String name;
     private double price;
+    private String imageUrl; // <-- Đã thêm
     private boolean isActive;
 
     // Dùng khi join để hiển thị
@@ -18,15 +19,19 @@ public class FnbItem {
 
     public FnbItem() {
     }
-
-    public FnbItem(Integer itemId, Integer categoryId, String code, String name, double price, boolean isActive) {
+    
+    // Constructor (đã cập nhật)
+    public FnbItem(Integer itemId, Integer categoryId, String code, String name, double price, String imageUrl, boolean isActive) {
         this.itemId = itemId;
         this.categoryId = categoryId;
         this.code = code;
         this.name = name;
         this.price = price;
+        this.imageUrl = imageUrl;
         this.isActive = isActive;
     }
+
+    // ... (Toàn bộ getter/setter) ...
 
     public Integer getItemId() {
         return itemId;
@@ -66,6 +71,14 @@ public class FnbItem {
 
     public void setPrice(double price) {
         this.price = price;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 
     public boolean isActive() {

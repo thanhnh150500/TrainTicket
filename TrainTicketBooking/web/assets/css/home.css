@@ -1,0 +1,243 @@
+/* ===============================
+   Voyage Home Page Custom Styles
+   =============================== */
+
+/* RESET & VARIABLES */
+:root {
+    --voy-blue: #1673ff;
+    --voy-blue-dark: #0c58cc;
+    --voy-bg: #f6f8ff;
+    --voy-line: #e6ebf5;
+    --voy-text: #0f172a;
+    --voy-muted: #6b7280;
+    --voy-radius: 16px;
+}
+
+body {
+    background-color: #fff;
+    color: var(--voy-text);
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    line-height: 1.6;
+}
+
+/* =====================================
+   SECTION 1 — HERO + SEARCH TRIP FORM
+   ===================================== */
+
+.voy-hero {
+    background: var(--voy-bg);
+    position: relative;
+}
+
+.voy-hero h1 {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.voy-hero p {
+    font-size: 1rem;
+    color: var(--voy-muted);
+}
+
+/* Search Card */
+.voy-hero .card {
+    border-radius: 20px;
+    border: 1px solid var(--voy-line);
+    background: #fff;
+}
+
+.voy-hero .nav-pills .btn {
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+}
+
+.voy-hero .nav-pills .btn.active {
+    background-color: var(--voy-blue);
+    color: #fff;
+    border-color: var(--voy-blue);
+}
+
+.voy-hero .input-group {
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.voy-hero .input-group-text {
+    background: #eef4ff;
+    color: var(--voy-blue);
+    border: 1px solid var(--voy-line);
+}
+
+.voy-hero .input-box {
+    border: 1px solid var(--voy-line);
+    border-radius: 999px;
+    transition: all 0.2s ease;
+}
+
+.voy-hero .input-box:focus {
+    border-color: var(--voy-blue);
+    box-shadow: 0 0 0 3px rgba(22, 115, 255, 0.2);
+}
+
+/* Swap and Clear Buttons */
+#swapBtn,
+#clearReturnBtn {
+    background: #eef4ff;
+    border: 1px solid var(--voy-line);
+    color: var(--voy-blue);
+    border-radius: 999px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+#swapBtn:hover,
+#clearReturnBtn:hover {
+    background: #e3edff;
+}
+
+#returnDate:disabled {
+    background: #f1f3f9;
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* =====================================
+   SECTION 2 — DEALS CARDS
+   ===================================== */
+
+.sec {
+    padding: 48px 0;
+}
+
+.sec h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.cards-scroll,
+.d-flex.flex-row {
+    scrollbar-width: thin;
+    scrollbar-color: #cdd7f5 transparent;
+}
+
+.cards-scroll::-webkit-scrollbar,
+.d-flex.flex-row::-webkit-scrollbar {
+    height: 8px;
+}
+
+.cards-scroll::-webkit-scrollbar-thumb,
+.d-flex.flex-row::-webkit-scrollbar-thumb {
+    background: #dce4ff;
+    border-radius: 8px;
+}
+
+.card {
+    border-radius: 16px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.1);
+}
+
+.card-img-top {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+    background: #eef2ff;
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+}
+
+/* =====================================
+   SECTION 3 — FEATURED POSTS
+   ===================================== */
+
+.bg-light .card {
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--voy-line);
+}
+
+.bg-light .card-img-top {
+    height: 160px;
+    object-fit: cover;
+}
+
+.bg-light .card-body h5 {
+    font-size: 1rem;
+    margin-bottom: 0.4rem;
+}
+
+.bg-light .card-body p {
+    color: var(--voy-muted);
+    font-size: 0.9rem;
+}
+
+.bg-light .card-body a {
+    color: var(--voy-blue);
+    font-weight: 600;
+}
+
+.bg-light .card-body a:hover {
+    text-decoration: underline;
+}
+
+/* =====================================
+   SECTION 4 — PARTNERS GRID
+   ===================================== */
+
+.row.g-3 .border {
+    transition: box-shadow 0.2s ease;
+}
+
+.row.g-3 .border:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.row.g-3 img {
+    filter: grayscale(0.2);
+    transition: filter 0.3s;
+}
+
+.row.g-3 img:hover {
+    filter: grayscale(0);
+}
+
+/* =====================================
+   RESPONSIVE TWEAKS
+   ===================================== */
+
+@media (max-width: 992px) {
+    .voy-hero h1 {
+        font-size: 1.7rem;
+    }
+    .voy-hero .card {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    #swapBtn {
+        display: none;
+    }
+    .sec {
+        padding: 32px 0;
+    }
+}
+
+@media (max-width: 576px) {
+    .voy-hero h1 {
+        font-size: 1.4rem;
+    }
+    .voy-hero p {
+        font-size: 0.9rem;
+    }
+    .card-img-top {
+        height: 120px;
+    }
+}

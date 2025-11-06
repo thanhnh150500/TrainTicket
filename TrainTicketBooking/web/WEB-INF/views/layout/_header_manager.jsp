@@ -1,78 +1,95 @@
 <%@ page pageEncoding="UTF-8" contentType="text/html; charset=UTF-8" %>
-<%@taglib prefix="c"  uri="jakarta.tags.core"%>
+<%@taglib prefix="c" uri="jakarta.tags.core"%>
 <%@taglib prefix="fn" uri="jakarta.tags.functions"%>
 
 <c:set var="ctx" value="${pageContext.request.contextPath}" />
 <c:set var="uri" value="${pageContext.request.requestURI}" />
 
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="${ctx}/assets/css/main.css">
+<link rel="stylesheet" href="${ctx}/assets/css/theme.css">
 
 <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top tt-nav border-bottom">
     <div class="container">
 
         <!-- Brand -->
-        <a class="navbar-brand d-flex align-items-center fw-semibold" href="${ctx}/staff/home">
-            <i class="bi bi-cup-hot-fill me-2 text-danger"></i> TrainTicket <span class="ms-1 text-muted">Staff</span>
+        <a class="navbar-brand d-flex align-items-center fw-semibold" href="${ctx}/manager">
+            <i class="bi bi-train-front-fill me-2"></i> TrainTicket <span class="ms-1 text-muted">Manager</span>
         </a>
 
         <!-- Toggler -->
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#ttStaffNavbar"
-                aria-controls="ttStaffNavbar" aria-expanded="false" aria-label="Toggle navigation">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#ttMgrNavbar"
+                aria-controls="ttMgrNavbar" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
 
         <!-- Nav -->
-        <div class="collapse navbar-collapse" id="ttStaffNavbar">
+        <div class="collapse navbar-collapse" id="ttMgrNavbar">
 
             <!-- Left -->
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
-                <!-- Trang chủ -->
+                <!-- Tổng quan -->
                 <li class="nav-item">
-                    <a class="nav-link ${ (uri == ctx.concat('/staff/home')) || (uri == ctx.concat('/staff/')) ? 'active' : '' }"
-                       href="${ctx}/staff/home">
-                        Trang chủ
-                    </a>
+                    <a class="nav-link ${ (uri == ctx.concat('/manager')) || (uri == ctx.concat('/manager/')) ? 'active' : '' }"
+                       href="${ctx}/manager">Tổng quan</a>
                 </li>
 
-                <!-- Đặt món F&B -->
+                <!-- Trips: link thẳng -->
                 <li class="nav-item">
-                    <a class="nav-link ${ fn:contains(uri,'/staff/order-fnb') ? 'active' : '' }"
-                       href="${ctx}/staff/order-fnb">
-                        Đặt món F&B
-                    </a>
+                    <a class="nav-link ${ fn:contains(uri,'/manager/trips') ? 'active' : '' }"
+                       href="${ctx}/manager/trips">Lịch trình tàu</a>
                 </li>
 
-                <!-- Lịch sử đơn -->
+                <!-- Pricing: link thẳng -->
                 <li class="nav-item">
-                    <a class="nav-link ${ fn:contains(uri,'/staff/orders') ? 'active' : '' }"
-                       href="${ctx}/staff/orders">
-                        Lịch sử đơn
-                    </a>
+                    <a class="nav-link ${ fn:contains(uri,'/manager/fare-rules') ? 'active' : '' }"
+                       href="${ctx}/manager/fare-rules">Giá vé</a>
                 </li>
 
-                <!-- (Tuỳ chọn sau) Thống kê -->
-                <!--
-                <li class="nav-item">
-                    <a class="nav-link ${ fn:contains(uri,'/staff/statistics') ? 'active' : '' }"
-                       href="${ctx}/staff/statistics">
-                        Thống kê
+                <!-- Catalog (giữ dropdown) -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle ${ fn:contains(uri,'/manager/cities') 
+                                                          || fn:contains(uri,'/manager/stations') 
+                                                          || fn:contains(uri,'/manager/routes') 
+                                                          || fn:contains(uri,'/manager/trains') 
+                                                          || fn:contains(uri,'/manager/carriages') 
+                                                          || fn:contains(uri,'/manager/seat-classes') 
+                                                          || fn:contains(uri,'/manager/seats') ? 'active' : '' }"
+                       href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Danh mục
                     </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="${ctx}/manager/stations">Ga tàu</a></li>
+                        <li><a class="dropdown-item" href="${ctx}/manager/routes">Tuyến</a></li>
+                        <li><a class="dropdown-item" href="${ctx}/manager/trains">Đoàn tàu</a></li>
+                        <li><a class="dropdown-item" href="${ctx}/manager/carriages">Toa</a></li>
+                        <li><a class="dropdown-item" href="${ctx}/manager/seat-classes">Hạng ghế</a></li>
+                        <li><a class="dropdown-item" href="${ctx}/manager/seats">Sơ đồ ghế</a></li>
+                        <li><a class="dropdown-item" href="${ctx}/manager/fnb-items">Đồ Order</a></li>
+                        <li><a class="dropdown-item" href="${ctx}/manager/fnb-categories">Loại dịch vụ</a></li>
+                    </ul>
                 </li>
-                -->
+
+                <!-- Reports -->
+                <li class="nav-item">
+                    <a class="nav-link ${ fn:contains(uri,'/manager/fnb-orders') ? 'active' : '' }"
+                       href="${ctx}/manager/fnb-orders">Đơn F&B</a>
+                </li>
             </ul>
 
             <!-- Right (user) -->
             <ul class="navbar-nav align-items-lg-center mb-2 mb-lg-0">
                 <c:choose>
-                    <c:when test="${not empty sessionScope.authUser}">
+                    <c:when test="${not empty sessionScope.AUTH_USER}">
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-person-circle me-1"></i>${sessionScope.authUser.fullName}
+                           
+                                <i class="bi bi-person-circle me-1"></i>${sessionScope.AUTH_USER.fullName}
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="${ctx}/staff/profile">Tài khoản</a></li>
-                                <li><a class="dropdown-item" href="${ctx}/staff/settings">Thiết lập</a></li>
+                                <li><a class="dropdown-item" href="${ctx}/profile">Tài khoản</a></li>
+                                <li><a class="dropdown-item" href="${ctx}/settings">Thiết lập</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <form action="${ctx}/auth/logout" method="post" class="px-3 py-1">
@@ -99,9 +116,12 @@
             </ul>
         </div>
     </div>
+
+
 </nav>
 
 <!-- chừa khoảng cho sticky-top -->
+
 <div style="height:56px;"></div>
 
 <style>
@@ -110,7 +130,6 @@
     }
     .navbar .nav-link.active {
         font-weight: 600;
-        color: #0d6efd !important;
     }
     .navbar .nav-link:hover {
         color: #0d6efd;

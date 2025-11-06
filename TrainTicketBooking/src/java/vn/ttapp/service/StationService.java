@@ -22,7 +22,7 @@ public class StationService {
 
     public Integer create(Integer cityId, String code, String name, String address) throws SQLException {
         if (cityId == null || !cityDao.existsById(cityId)) {
-            return null;
+            return null; // city invalid
         }
 
         String normCode = normalizeCode(code);
@@ -33,7 +33,7 @@ public class StationService {
             return null;
         }
         if (stationDao.codeExists(normCode)) {
-            return null;
+            return null; // duplicate code
         }
 
         return stationDao.create(cityId, normCode, normName, normAddr);
@@ -43,6 +43,7 @@ public class StationService {
         if (s.getStationId() == null || s.getCityId() == null || !cityDao.existsById(s.getCityId())) {
             return false;
         }
+
         String normCode = normalizeCode(s.getCode());
         String normName = normalizeName(s.getName());
         String normAddr = normalizeAddress(s.getAddress());
@@ -58,6 +59,7 @@ public class StationService {
         s.setCode(normCode);
         s.setName(normName);
         s.setAddress(normAddr);
+
         return stationDao.update(s) > 0;
     }
 
@@ -74,7 +76,7 @@ public class StationService {
         if (s.isEmpty() || s.length() > 20) {
             return null;
         }
-        // chỉ cho chữ/số/gạch dưới/gạch ngang (tuỳ bạn nới ra)
+        // chỉ cho chữ/số/gạch dưới/gạch ngang
         if (!s.matches("[A-Z0-9\\-_]+")) {
             return null;
         }

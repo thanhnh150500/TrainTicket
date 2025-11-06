@@ -25,7 +25,7 @@ public class TrainService {
             return null;
         }
         if (dao.codeExists(normCode)) {
-            return null;
+            return null; // đã tồn tại code
         }
         return dao.create(normCode, normName);
     }
@@ -40,10 +40,12 @@ public class TrainService {
             return false;
         }
 
+        // code không được trùng với train khác
         Train existed = dao.findByCode(normCode);
         if (existed != null && !existed.getTrainId().equals(t.getTrainId())) {
-            return false; // code đã thuộc train khác
+            return false;
         }
+
         t.setCode(normCode);
         t.setName(normName);
         return dao.update(t) > 0;
@@ -62,7 +64,7 @@ public class TrainService {
         if (s.isEmpty() || s.length() > 40) {
             return null;
         }
-        // có thể thêm regex: s.matches("[A-Z0-9\\-]+")
+        // Optional: kiểm tra pattern: s.matches("[A-Z0-9\\-]+")
         return s;
     }
 

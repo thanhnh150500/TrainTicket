@@ -1,0 +1,70 @@
+body {
+    background-color: #f8f9fa;
+    font-family: "Inter", "Segoe UI", sans-serif;
+    color: #333;
+}
+
+.card {
+    border-radius: 12px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+    border: none;
+}
+
+.card-header {
+    font-weight: 600;
+    font-size: 1.05rem;
+    border-bottom: 1px solid #eee;
+}
+
+.kv {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 6px;
+    line-height: 1.4;
+}
+.kv .k {
+    width: 160px;
+    color: #6c757d;
+    font-weight: 500;
+}
+.kv .v {
+    flex: 1;
+    font-weight: 400;
+}
+
+.pill {
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 0.85rem;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.table {
+    border-radius: 10px;
+    overflow: hidden;
+}
+.table thead th {
+    background-color: #f1f3f5;
+    font-weight: 600;
+}
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.btn-secondary {
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+.btn-secondary:hover {
+    background-color: #495057;
+}
+
+h3 {
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.alert {
+    border-radius: 10px;
+}

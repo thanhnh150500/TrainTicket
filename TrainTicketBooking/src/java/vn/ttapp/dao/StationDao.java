@@ -11,8 +11,8 @@ public class StationDao {
 
     private Station map(ResultSet rs) throws SQLException {
         Station s = new Station();
-        s.setStationId(rs.getInt("station_id"));   // NOT NULL
-        s.setCityId(rs.getInt("city_id"));         // NOT NULL
+        s.setStationId(rs.getObject("station_id", Integer.class));
+        s.setCityId(rs.getObject("city_id", Integer.class));
         s.setCode(rs.getString("code"));
         s.setName(rs.getString("name"));
         s.setAddress(rs.getString("address"));
@@ -42,10 +42,10 @@ public class StationDao {
                    c.name AS city_name
             FROM dbo.Station s
             JOIN dbo.City c ON c.city_id = s.city_id
-            WHERE s.code = ?
+            WHERE UPPER(LTRIM(RTRIM(s.code))) = ?
         """;
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, code);
+            ps.setString(1, code == null ? null : code.trim().toUpperCase());
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? map(rs) : null;
             }
@@ -70,9 +70,9 @@ public class StationDao {
     }
 
     public boolean codeExists(String code) throws SQLException {
-        String sql = "SELECT 1 FROM dbo.Station WHERE code = ?";
+        String sql = "SELECT 1 FROM dbo.Station WHERE UPPER(LTRIM(RTRIM(code))) = ?";
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, code);
+            ps.setString(1, code == null ? null : code.trim().toUpperCase());
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next();
             }
@@ -86,7 +86,7 @@ public class StationDao {
             VALUES(?, ?, ?, ?)
         """;
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setInt(1, cityId);
+            ps.setObject(1, cityId, Types.INTEGER);
             ps.setString(2, code);
             ps.setNString(3, name);
             if (address == null || address.isBlank()) {
@@ -111,7 +111,7 @@ public class StationDao {
             WHERE station_id = ?
         """;
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setInt(1, s.getCityId());
+            ps.setObject(1, s.getCityId(), Types.INTEGER);
             ps.setString(2, s.getCode());
             ps.setNString(3, s.getName());
             if (s.getAddress() == null || s.getAddress().isBlank()) {
@@ -119,16 +119,230 @@ public class StationDao {
             } else {
                 ps.setNString(4, s.getAddress());
             }
-            ps.setInt(5, s.getStationId());
+            ps.setObject(5, s.getStationId(), Types.INTEGER);
             return ps.executeUpdate();
         }
     }
 
     public int delete(int id) throws SQLException {
-        String sql = "DELETE FROM dbo.Station WHERE station_id = ?";
-        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement("DELETE FROM dbo.Station WHERE station_id = ?")) {
             ps.setInt(1, id);
             return ps.executeUpdate();
+        }
+    }
+
+    /* ===== Exact theo tên (bỏ dấu, không phân biệt hoa/thường) ===== */
+    public Station findByNameExact(String name) throws SQLException {
+        String sql = """
+            SELECT s.station_id, s.city_id, s.code, s.name, s.address, c.name AS city_name
+            FROM dbo.Station s
+            JOIN dbo.City c ON c.city_id = s.city_id
+            WHERE LTRIM(RTRIM(s.name)) COLLATE SQL_Latin1_General_CP1_CI_AI = ?
+        """;
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setNString(1, name == null ? null : name.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? map(rs) : null;
+            }
+        }
+    }
+
+    public Integer findIdByNameExact(String name) throws SQLException {
+        String sql = """
+            SELECT station_id
+            FROM dbo.Station
+            WHERE LTRIM(RTRIM(name)) COLLATE SQL_Latin1_General_CP1_CI_AI = ?
+        """;
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setNString(1, name == null ? null : name.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : null;
+            }
+        }
+    }
+
+    /* ===== Fallback “loose” theo tên/tỉnh/mã ===== */
+    public Integer findIdByNameLoose(String input) throws SQLException {
+        if (input == null || input.isBlank()) {
+            return null;
+        }
+
+        String term = input.trim();
+        String norm = term.replaceAll("\\s+", "");
+        String start = term + "%";
+        String any = "%" + term + "%";
+
+        String codePrefix = norm.toUpperCase();
+        String codeLike;
+        if (codePrefix.matches("^GA\\d{1,3}$")) {
+            codeLike = codePrefix + "%";
+        } else if (codePrefix.matches("^\\d{1,3}$")) {
+            codeLike = "GA" + codePrefix + "%";
+        } else if (codePrefix.startsWith("GA")) {
+            codeLike = codePrefix + "%";
+        } else {
+            codeLike = "GA%";
+        }
+
+        String sql = """
+            SELECT TOP (1) s.station_id,
+                   CASE
+                     WHEN s.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? THEN 0
+                     WHEN c.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? THEN 1
+                     WHEN s.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? THEN 2
+                     WHEN c.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? THEN 3
+                     WHEN UPPER(LTRIM(RTRIM(s.code))) LIKE ? THEN 4
+                     ELSE 9
+                   END AS score
+            FROM dbo.Station s
+            JOIN dbo.City c ON c.city_id = s.city_id
+            WHERE s.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?
+               OR c.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?
+               OR UPPER(LTRIM(RTRIM(s.code))) LIKE ?
+            ORDER BY score, s.name
+        """;
+
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setNString(1, start);
+            ps.setNString(2, start);
+            ps.setNString(3, any);
+            ps.setNString(4, any);
+            ps.setString(5, codeLike);
+            ps.setNString(6, any);
+            ps.setNString(7, any);
+            ps.setString(8, codeLike);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : null;
+            }
+        }
+    }
+
+    /* ===== Suggest autocomplete ===== */
+    public List<Station> suggestByNameOrCode(String q, int limit) throws SQLException {
+        String term = (q == null) ? "" : q.trim();
+        String norm = term.replaceAll("\\s+", "");
+        String start = term + "%";
+        String word = "% " + term + "%";
+        String any = "%" + term + "%";
+        int lim = Math.max(1, limit);
+
+        String codePrefix = norm.toUpperCase();
+        String codeLike;
+        if (codePrefix.matches("^GA\\d{1,3}$")) {
+            codeLike = codePrefix + "%";
+        } else if (codePrefix.matches("^\\d{1,3}$")) {
+            codeLike = "GA" + codePrefix + "%";
+        } else if (codePrefix.startsWith("GA")) {
+            codeLike = codePrefix + "%";
+        } else {
+            codeLike = "GA%";
+        }
+
+        String sql = """
+            SELECT TOP (?) s.station_id, s.city_id, s.code, s.name, s.address, c.name AS city_name,
+                   CASE
+                     WHEN s.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? THEN 0
+                     WHEN c.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? THEN 1
+                     WHEN s.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? THEN 2
+                     WHEN c.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? THEN 3
+                     WHEN UPPER(LTRIM(RTRIM(s.code))) LIKE ? THEN 4
+                     WHEN s.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? THEN 5
+                     WHEN c.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? THEN 6
+                     ELSE 9
+                   END AS score
+            FROM dbo.Station s
+            JOIN dbo.City c ON c.city_id = s.city_id
+            WHERE s.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?
+               OR c.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?
+               OR UPPER(LTRIM(RTRIM(s.code))) LIKE ?
+            ORDER BY score, c.name, s.name
+        """;
+
+        List<Station> out = new ArrayList<>();
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, lim);
+
+            // For ORDER score
+            ps.setNString(2, start);
+            ps.setNString(3, start);
+            ps.setNString(4, word);
+            ps.setNString(5, word);
+            ps.setString(6, codeLike);
+            ps.setNString(7, any);
+            ps.setNString(8, any);
+
+            // WHERE params
+            ps.setNString(9, any);
+            ps.setNString(10, any);
+            ps.setString(11, codeLike);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(map(rs));
+                }
+            }
+        }
+        return out;
+    }
+
+    public List<Station> findByRegionCode(String regionCode) throws SQLException {
+        String sql = """
+            SELECT s.station_id, s.city_id, s.code, s.name, s.address, c.name AS city_name
+            FROM dbo.Station s
+            JOIN dbo.City  c ON c.city_id = s.city_id
+            JOIN dbo.Region r ON r.region_id = c.region_id
+            WHERE r.code = ?
+            ORDER BY c.name, s.name
+        """;
+        List<Station> list = new ArrayList<>();
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, regionCode);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(map(rs));
+                }
+            }
+        }
+        return list;
+    }
+
+    public List<Station> findByCityId(int cityId) throws SQLException {
+        String sql = """
+            SELECT s.station_id, s.city_id, s.code, s.name, s.address, c.name AS city_name
+            FROM dbo.Station s
+            JOIN dbo.City c ON c.city_id = s.city_id
+            WHERE s.city_id = ?
+            ORDER BY s.name
+        """;
+        List<Station> list = new ArrayList<>();
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, cityId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(map(rs));
+                }
+            }
+        }
+        return list;
+    }
+
+    public String findNameById(int id) throws SQLException {
+        String sql = "SELECT name FROM dbo.Station WHERE station_id = ?";
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getNString(1) : null;
+            }
+        }
+    }
+
+    public Integer findIdByCode(String code) throws SQLException {
+        String sql = "SELECT station_id FROM dbo.Station WHERE UPPER(LTRIM(RTRIM(code))) = ?";
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, code == null ? null : code.trim().toUpperCase());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : null;
+            }
         }
     }
 }

@@ -8,10 +8,13 @@ import vn.ttapp.dao.FnbCategoryDao;
 import vn.ttapp.model.FnbCategory;
 import java.sql.SQLException;
 import java.util.List;
+import vn.ttapp.dao.FnbItemDao;
+import vn.ttapp.model.FnbItem;
 
 public class FnbService {
 
     private final FnbCategoryDao categoryDao = new FnbCategoryDao();
+    private FnbItemDao itemDao = new FnbItemDao();
 
     public List<FnbCategory> getAllCategories() throws SQLException {
         return categoryDao.findAll();
@@ -34,5 +37,8 @@ public class FnbService {
 
     public boolean deleteCategory(int id) throws SQLException {
         return categoryDao.delete(id) > 0;
+    }
+    public List<FnbItem> getAllItems() {
+        return itemDao.findAll();
     }
 }

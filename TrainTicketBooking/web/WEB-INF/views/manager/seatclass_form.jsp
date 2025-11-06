@@ -22,36 +22,30 @@
             </c:choose>
         </h3>
 
-        <c:if test="${not empty error}">
-            <div class="alert alert-danger">${error}</div>
+    <c:if test="${not empty error}">
+        <div class="alert alert-danger">${error}</div>
+    </c:if>
+
+    <form method="post" action="${pageContext.request.contextPath}/manager/seat-classes" accept-charset="UTF-8">
+        <input type="hidden" name="op" value="save"/>
+        <input type="hidden" name="_csrf" value="${sessionScope.csrfToken}"/>
+        <c:if test="${sc != null && sc.seatClassId != null}">
+            <input type="hidden" name="seat_class_id" value="${sc.seatClassId}"/>
         </c:if>
 
-        <form method="post" action="${pageContext.request.contextPath}/manager/seat-classes" accept-charset="UTF-8">
-            <input type="hidden" name="op" value="save"/>
-            <input type="hidden" name="_csrf" value="${sessionScope.csrfToken}"/>
-            <c:if test="${sc != null && sc.seatClassId != null}">
-                <input type="hidden" name="seat_class_id" value="${sc.seatClassId}"/>
-            </c:if>
+        <div class="mb-3">
+            <label class="form-label">Mã (code)</label>
+            <input type="text" name="code" class="form-control" value="${sc.code}" required maxlength="20"/>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Tên</label>
+            <input type="text" name="name" class="form-control" value="${sc.name}" required maxlength="100"/>
+        </div>
 
-            <div class="mb-3">
-                <label class="form-label">Mã (code)</label>
-                <input type="text" name="code" class="form-control"
-                       value="<c:out value='${sc.code}'/>"
-                       required maxlength="20"
-                       pattern="[A-Za-z0-9\-_]+"
-                       title="Chỉ chữ/số, '-', '_'"/>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Tên</label>
-                <input type="text" name="name" class="form-control"
-                       value="<c:out value='${sc.name}'/>"
-                       required maxlength="100"/>
-            </div>
-
-            <div class="d-flex gap-2">
-                <button class="btn btn-primary" type="submit">Lưu</button>
-                <a class="btn btn-secondary" href="${pageContext.request.contextPath}/manager/seat-classes">Hủy</a>
-            </div>
-        </form>
-    </body>
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" type="submit">Lưu</button>
+            <a class="btn btn-secondary" href="${pageContext.request.contextPath}/manager/seat-classes">Hủy</a>
+        </div>
+    </form>
+</body>
 </html>

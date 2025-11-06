@@ -31,10 +31,10 @@
             <tbody>
                 <c:forEach items="${list}" var="r">
                     <tr>
-                        <td><c:out value="${r.routeId}"/></td>
-                        <td><c:out value="${r.code}"/></td>
-                        <td><c:out value="${r.originName}"/></td>
-                        <td><c:out value="${r.destName}"/></td>
+                        <td>${r.routeId}</td>
+                        <td>${r.code}</td>
+                        <td>${r.originName}</td>
+                        <td>${r.destName}</td>
                         <td class="d-flex gap-2">
                             <a class="btn btn-sm btn-outline-secondary"
                                href="${pageContext.request.contextPath}/manager/routes?op=edit&id=${r.routeId}">Sửa</a>
@@ -79,11 +79,11 @@
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
         <script>
-                                            [document.getElementById('toast-success'), document.getElementById('toast-error')]
-                                                    .forEach(el => {
-                                                        if (el)
-                                                            new bootstrap.Toast(el, {delay: 2500, autohide: true}).show();
-                                                    });
+                                [document.getElementById('toast-success'), document.getElementById('toast-error')]
+                                        .forEach(el => {
+                                            if (el)
+                                                new bootstrap.Toast(el, {delay: 2500, autohide: true}).show();
+                                        });
         </script>
     </body>
 </html>

@@ -1,0 +1,32 @@
+/* booking-history.css */
+.table thead th {
+    font-weight: 600;
+    letter-spacing: .2px;
+}
+
+.badge.bg-primary-subtle {
+    background: rgba(13,110,253,.08);
+    border: 1px solid rgba(13,110,253,.35);
+}
+
+.card {
+    border-radius: 12px;
+}
+
+.table > :not(caption) > * > * {
+    padding: .85rem .85rem;
+}
+
+.alert {
+    border-radius: 12px;
+}
+
+.btn {
+    border-radius: 10px;
+}
+
+.sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
