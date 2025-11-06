@@ -39,38 +39,26 @@
                 <select name="city_id" class="form-select" required>
                     <option value="">-- chọn thành phố --</option>
                     <c:forEach items="${cities}" var="c">
-                        <option value="${c.cityId}"
-                                <c:if test="${s.cityId != null && s.cityId == c.cityId}">selected</c:if>>
-                            <c:out value="${c.name}"/> (<c:out value="${c.code}"/>)
+                        <option value="${c.cityId}" ${s.cityId != null && s.cityId == c.cityId ? 'selected' : ''}>
+                            ${c.name} (${c.code})
                         </option>
-
                     </c:forEach>
                 </select>
             </div>
 
             <div class="mb-3">
                 <label class="form-label">Mã ga (code)</label>
-                <input type="text" name="code" class="form-control"
-                       value="<c:out value='${s.code}'/>"
-                       required maxlength="20"
-                       pattern="[A-Za-z0-9\-_]+"
-                       title="Chỉ chữ, số, dấu '-' hoặc '_'"/>
-
-                <div class="form-text">Ví dụ: GAHN, GASA (duy nhất).</div>
+                <input type="text" name="code" class="form-control" value="${s.code}" required maxlength="20" />
             </div>
 
             <div class="mb-3">
                 <label class="form-label">Tên ga</label>
-                <input type="text" name="name" class="form-control"
-                       value="<c:out value='${s.name}'/>"
-                       required maxlength="150"/>
+                <input type="text" name="name" class="form-control" value="${s.name}" required maxlength="150" />
             </div>
 
             <div class="mb-3">
                 <label class="form-label">Địa chỉ</label>
-                <input type="text" name="address" class="form-control"
-                       value="<c:out value='${s.address}'/>"
-                       maxlength="255"/><input type="text" name="address" class="form-control" value="${s.address}" maxlength="255" />
+                <input type="text" name="address" class="form-control" value="${s.address}" maxlength="255" />
             </div>
 
             <div class="d-flex gap-2">

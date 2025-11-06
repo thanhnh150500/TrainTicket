@@ -1,7 +1,6 @@
 package vn.ttapp.service;
 
 import vn.ttapp.dao.RouteDao;
-import vn.ttapp.dao.StationDao;
 import vn.ttapp.model.Route;
 
 import java.sql.SQLException;
@@ -10,7 +9,6 @@ import java.util.List;
 public class RouteService {
 
     private final RouteDao dao = new RouteDao();
-    private final StationDao stationDao = new StationDao();
 
     public List<Route> findAll() throws SQLException {
         return dao.findAll();
@@ -24,67 +22,27 @@ public class RouteService {
         if (originId == destId) {
             return null;
         }
-        if (stationDao.findById(originId) == null || stationDao.findById(destId) == null) {
+        if (dao.codeExists(code)) {
             return null;
         }
-
-        String normCode = normalizeCode(code);
-        if (normCode == null) {
-            return null;
-        }
-
-        if (dao.codeExists(normCode)) {
-            return null;
-        }
-        return dao.create(originId, destId, normCode);
+        return dao.create(originId, destId, code);
     }
 
     public boolean update(Route r) throws SQLException {
-        if (r.getRouteId() == null) {
-            return false;
-        }
-        if (r.getOriginStationId() == null || r.getDestStationId() == null) {
-            return false;
-        }
         if (r.getOriginStationId().equals(r.getDestStationId())) {
             return false;
         }
-
-        if (stationDao.findById(r.getOriginStationId()) == null
-                || stationDao.findById(r.getDestStationId()) == null) {
-            return false;
+        Route existed = dao.findById(r.getRouteId());
+        if (dao.codeExists(r.getCode())) {
+            // nếu đổi sang code đang tồn tại ở route khác → fail
+            if (existed == null || !existed.getCode().equals(r.getCode())) {
+                return false;
+            }
         }
-
-        String normCode = normalizeCode(r.getCode());
-        if (normCode == null) {
-            return false;
-        }
-
-        Route byCode = dao.findByCode(normCode);
-        if (byCode != null && !byCode.getRouteId().equals(r.getRouteId())) {
-            return false; // code đã thuộc route khác
-        }
-
-        r.setCode(normCode);
         return dao.update(r) > 0;
     }
 
     public boolean delete(int id) throws SQLException {
         return dao.delete(id) > 0;
-    }
-
-    // --- helpers ---
-    private String normalizeCode(String code) {
-        if (code == null) {
-            return null;
-        }
-        String s = code.trim().toUpperCase();
-        if (s.isEmpty() || s.length() > 40) {
-            return null;
-        }
-        if (!s.matches("[A-Z0-9\\-]+")) {
-            return null; // ví dụ: HNI-HCM
-        }
-        return s;
     }
 }

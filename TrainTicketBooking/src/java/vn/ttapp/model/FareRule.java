@@ -1,29 +1,29 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
 package vn.ttapp.model;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+/**
+ *
+ * @author dotri
+ */
 public class FareRule {
-
-    private Integer fareRuleId;
-    private Integer routeId;
-    private Integer seatClassId;
-    private BigDecimal basePrice;
-    private LocalDate effectiveFrom;
-    private LocalDate effectiveTo; // nullable
-
-    // view-only fields
+    public Integer fareRuleId;
+    public Integer routeId;
+    public Integer seatClassId;
+    public BigDecimal basePrice;
+    public LocalDate   effectiveFrom;
+    public LocalDate   effectiveTo; // nullable
     private String seatClassCode;
     private String seatClassName;
-    private String routeCode;   // <- nên thêm để hiển thị
-    private String originName;  // <- tuỳ chọn
-    private String destName;    // <- tuỳ chọn
-
     public FareRule() {
     }
 
-    public FareRule(Integer fareRuleId, Integer routeId, Integer seatClassId,
-            BigDecimal basePrice, LocalDate effectiveFrom, LocalDate effectiveTo) {
+    public FareRule(Integer fareRuleId, Integer routeId, Integer seatClassId, BigDecimal basePrice, LocalDate effectiveFrom, LocalDate effectiveTo) {
         this.fareRuleId = fareRuleId;
         this.routeId = routeId;
         this.seatClassId = seatClassId;
@@ -32,7 +32,6 @@ public class FareRule {
         this.effectiveTo = effectiveTo;
     }
 
-    // getters/setters (giữ như cũ + thêm 3 field mới)
     public Integer getFareRuleId() {
         return fareRuleId;
     }
@@ -96,28 +95,5 @@ public class FareRule {
     public void setSeatClassName(String seatClassName) {
         this.seatClassName = seatClassName;
     }
-
-    public String getRouteCode() {
-        return routeCode;
-    }
-
-    public void setRouteCode(String routeCode) {
-        this.routeCode = routeCode;
-    }
-
-    public String getOriginName() {
-        return originName;
-    }
-
-    public void setOriginName(String originName) {
-        this.originName = originName;
-    }
-
-    public String getDestName() {
-        return destName;
-    }
-
-    public void setDestName(String destName) {
-        this.destName = destName;
-    }
+    
 }

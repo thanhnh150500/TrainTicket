@@ -23,6 +23,10 @@ public class CarriageDao {
         return x;
     }
 
+    private String normalize(String s) {
+        return s == null ? null : s.trim().toUpperCase();
+    }
+
     public List<Carriage> findAll() throws SQLException {
         String sql = """
             SELECT c.carriage_id, c.train_id, c.code, c.seat_class_id, c.sort_order,
@@ -31,7 +35,10 @@ public class CarriageDao {
             FROM dbo.Carriage c
             JOIN dbo.Train t ON t.train_id = c.train_id
             JOIN dbo.SeatClass sc ON sc.seat_class_id = c.seat_class_id
-            ORDER BY t.code, c.sort_order, c.code
+            ORDER BY t.code,
+                     c.sort_order,
+                     TRY_CONVERT(int, c.code),
+                     c.code
         """;
         List<Carriage> list = new ArrayList<>();
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
@@ -59,32 +66,49 @@ public class CarriageDao {
             }
         }
     }
-// vn/ttapp/dao/CarriageDao.java (bổ sung)
 
-    public Carriage findByTrainAndCode(int trainId, String code) throws SQLException {
+    public List<Carriage> findByTrain(int trainId) throws SQLException {
         String sql = """
-        SELECT c.carriage_id, c.train_id, c.code, c.seat_class_id, c.sort_order,
-               t.code AS train_code, t.name AS train_name,
-               sc.code AS seat_class_code, sc.name AS seat_class_name
-        FROM dbo.Carriage c
-        JOIN dbo.Train t ON t.train_id = c.train_id
-        JOIN dbo.SeatClass sc ON sc.seat_class_id = c.seat_class_id
-        WHERE c.train_id = ? AND c.code = ?
+      SELECT carriage_id, train_id, seat_class_id, code, sort_order
+      FROM dbo.Carriage
+      WHERE train_id = ?
+      ORDER BY ISNULL(sort_order,9999), code
     """;
+        List<Carriage> out = new ArrayList<>();
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, trainId);
-            ps.setString(2, code);
             try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? map(rs) : null;
+                while (rs.next()) {
+                    Carriage x = new Carriage();
+                    x.setCarriageId(rs.getInt("carriage_id"));
+                    x.setTrainId(rs.getInt("train_id"));
+                    x.setSeatClassId(rs.getInt("seat_class_id"));
+                    x.setCode(rs.getString("code"));
+                    x.setSortOrder(rs.getInt("sort_order"));
+                    out.add(x);
+                }
             }
         }
+        return out;
     }
 
     public boolean codeExists(int trainId, String code) throws SQLException {
         String sql = "SELECT 1 FROM dbo.Carriage WHERE train_id = ? AND code = ?";
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, trainId);
-            ps.setString(2, code);
+            ps.setString(2, normalize(code));
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    public boolean codeExistsExceptId(int trainId, String code, int excludeId) throws SQLException {
+        String sql = "SELECT 1 FROM dbo.Carriage WHERE train_id = ? AND code = ? AND carriage_id <> ?";
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, trainId);
+            ps.setString(2, normalize(code));
+            ps.setInt(3, excludeId);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next();
             }
@@ -99,7 +123,7 @@ public class CarriageDao {
         """;
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, trainId);
-            ps.setString(2, code);
+            ps.setString(2, normalize(code));
             ps.setInt(3, seatClassId);
             ps.setInt(4, sortOrder);
             try (ResultSet rs = ps.executeQuery()) {
@@ -116,7 +140,7 @@ public class CarriageDao {
         """;
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, x.getTrainId());
-            ps.setString(2, x.getCode());
+            ps.setString(2, normalize(x.getCode()));
             ps.setInt(3, x.getSeatClassId());
             ps.setInt(4, x.getSortOrder());
             ps.setInt(5, x.getCarriageId());
@@ -130,15 +154,4 @@ public class CarriageDao {
             return ps.executeUpdate();
         }
     }
-
-    public boolean existsById(int id) throws SQLException {
-        String sql = "SELECT 1 FROM dbo.Carriage WHERE carriage_id = ?";
-        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
-            }
-        }
-    }
-
 }

@@ -12,9 +12,10 @@ import java.util.List;
 
 public class FnbItemService {
     private final FnbItemDao dao = new FnbItemDao();
-    private final FnbCategoryDao catDao = new FnbCategoryDao();
+    private final FnbCategoryDao catDao = new FnbCategoryDao(); // (Giả sử bạn có DAO này)
 
     public List<FnbItem> getAll() throws SQLException {
+        // Hàm findAll() trong DAO đã được sửa
         return dao.findAll();
     }
 
@@ -27,10 +28,13 @@ public class FnbItemService {
             return false;
         x.setCode(x.getCode().trim().toUpperCase());
 
+        // Logic không cần đổi, vì 'x' đã chứa image_url
         if (x.getItemId() == null) {
+            // Kiểm tra code trùng khi thêm mới
             if (dao.codeExists(x.getCode())) return false;
             return dao.insert(x) > 0;
         } else {
+            // (Lưu ý: Bạn có thể thêm logic kiểm tra code trùng khi update nếu cần)
             return dao.update(x) > 0;
         }
     }
@@ -38,5 +42,8 @@ public class FnbItemService {
     public boolean delete(int id) throws SQLException {
         return dao.delete(id) > 0;
     }
+    public List<FnbItem> getAllActive() throws SQLException {
+        // Gọi hàm DAO mới
+        return dao.findAllActive();
+    }
 }
-

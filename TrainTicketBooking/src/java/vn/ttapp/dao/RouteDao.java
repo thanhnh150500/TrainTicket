@@ -55,23 +55,6 @@ public class RouteDao {
         }
     }
 
-    public Route findByCode(String code) throws SQLException {
-        String sql = """
-            SELECT r.route_id, r.origin_station_id, r.dest_station_id, r.code,
-                   so.name AS origin_name, sd.name AS dest_name
-            FROM dbo.Route r
-            JOIN dbo.Station so ON so.station_id = r.origin_station_id
-            JOIN dbo.Station sd ON sd.station_id = r.dest_station_id
-            WHERE r.code = ?
-        """;
-        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, code);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? map(rs) : null;
-            }
-        }
-    }
-
     public boolean codeExists(String code) throws SQLException {
         String sql = "SELECT 1 FROM dbo.Route WHERE code = ?";
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
@@ -81,13 +64,19 @@ public class RouteDao {
             }
         }
     }
-    public boolean existsById(int id) throws SQLException {
-    String sql = "SELECT 1 FROM dbo.Route WHERE route_id = ?";
-    try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-        ps.setInt(1, id);
-        try (ResultSet rs = ps.executeQuery()) { return rs.next(); }
+
+    /**
+     * ✅ Thêm mới: kiểm tra route tồn tại theo ID
+     */
+    public boolean existsById(int routeId) throws SQLException {
+        String sql = "SELECT 1 FROM dbo.Route WHERE route_id = ?";
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, routeId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
     }
-}
 
     public Integer create(int originId, int destId, String code) throws SQLException {
         String sql = """
@@ -121,8 +110,7 @@ public class RouteDao {
     }
 
     public int delete(int id) throws SQLException {
-        String sql = "DELETE FROM dbo.Route WHERE route_id = ?";
-        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement("DELETE FROM dbo.Route WHERE route_id = ?")) {
             ps.setInt(1, id);
             return ps.executeUpdate();
         }

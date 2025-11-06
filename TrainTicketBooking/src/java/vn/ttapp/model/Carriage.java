@@ -1,20 +1,25 @@
-// vn/ttapp/model/Carriage.java
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
 package vn.ttapp.model;
 
+/**
+ *
+ * @author dotri
+ */
 public class Carriage {
+    public Integer carriageId;
+    public Integer trainId;
+    public String  code;
+    public Integer seatClassId;
+    public Integer sortOrder;
 
-    private Integer carriageId;
-    private Integer trainId;
-    private String code;
-    private Integer seatClassId;
-    private Integer sortOrder;
-
-    // view-only
     private String trainCode;
     private String trainName;
     private String seatClassCode;
     private String seatClassName;
-
+    
     public Carriage() {
     }
 
@@ -97,4 +102,5 @@ public class Carriage {
     public void setSeatClassName(String seatClassName) {
         this.seatClassName = seatClassName;
     }
+    
 }

@@ -1,22 +1,20 @@
-// vn/ttapp/model/TripStop.java
+
 package vn.ttapp.model;
 
 import java.time.LocalDateTime;
 
 public class TripStop {
-
-    private Integer tripStopId;
-    private Integer tripId;
-    private Integer stationId;
-    private LocalDateTime arrTime; // nullable
-    private LocalDateTime depTime; // nullable
-    private Integer stopOrder;
+    public Integer tripStopId;
+    public Integer tripId;
+    public Integer stationId;
+    public LocalDateTime arrTime; // nullable
+    public LocalDateTime depTime; // nullable
+    public Integer stopOrder;
 
     public TripStop() {
     }
 
-    public TripStop(Integer tripStopId, Integer tripId, Integer stationId,
-            LocalDateTime arrTime, LocalDateTime depTime, Integer stopOrder) {
+    public TripStop(Integer tripStopId, Integer tripId, Integer stationId, LocalDateTime arrTime, LocalDateTime depTime, Integer stopOrder) {
         this.tripStopId = tripStopId;
         this.tripId = tripId;
         this.stationId = stationId;
@@ -72,4 +70,5 @@ public class TripStop {
     public void setStopOrder(Integer stopOrder) {
         this.stopOrder = stopOrder;
     }
+    
 }

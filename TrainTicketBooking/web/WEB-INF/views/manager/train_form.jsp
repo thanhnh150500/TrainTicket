@@ -39,17 +39,13 @@
 
             <div class="mb-3">
                 <label class="form-label">Mã tàu (code)</label>
-                <input type="text" name="code" class="form-control"
-                       value="<c:out value='${t.code}'/>" required maxlength="40"
-                       pattern="[A-Za-z0-9\-]+"
-                       title="Chỉ chữ, số, dấu gạch ngang">
+                <input type="text" name="code" class="form-control" value="${t.code}" required maxlength="40">
                 <div class="form-text">Ví dụ: SE1, SE2… (duy nhất)</div>
             </div>
 
             <div class="mb-3">
                 <label class="form-label">Tên tàu</label>
-                <input type="text" name="name" class="form-control"
-                       value="<c:out value='${t.name}'/>" required maxlength="100">
+                <input type="text" name="name" class="form-control" value="${t.name}" required maxlength="100">
             </div>
 
             <div class="d-flex gap-2">

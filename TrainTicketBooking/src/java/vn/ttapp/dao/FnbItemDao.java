@@ -19,34 +19,66 @@ public class FnbItemDao {
         x.setCode(rs.getString("code"));
         x.setName(rs.getString("name"));
         x.setPrice(rs.getDouble("price"));
+        x.setImageUrl(rs.getString("image_url")); // <-- Cập nhật
         x.setActive(rs.getBoolean("is_active"));
-        x.setCategoryName(rs.getString("category_name"));
+        
+        // Thử lấy category_name nếu có join
+        try {
+             x.setCategoryName(rs.getString("category_name"));
+        } catch (SQLException e) {
+            // Bỏ qua nếu cột không tồn tại (trong câu query không join)
+        }
         return x;
     }
 
-    public List<FnbItem> findAll() throws SQLException {
-        String sql = """
-            SELECT i.*, c.name AS category_name
-            FROM dbo.FnbItem i
-            LEFT JOIN dbo.FnbCategory c ON c.category_id = i.category_id
-            ORDER BY i.item_id
-        """;
+    public List<FnbItem> findAll() {
         List<FnbItem> list = new ArrayList<>();
-        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+        // Trả về cả tên danh mục (category_name) để JSP có thể hiển thị
+        String sql = "SELECT i.*, c.name AS category_name " +
+                     "FROM dbo.FnbItem i " +
+                     "LEFT JOIN dbo.FnbCategory c ON c.category_id = i.category_id " +
+                     "ORDER BY i.category_id, i.name";
+        try (Connection conn = Db.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
+                 // Dùng hàm map đã sửa
                 list.add(map(rs));
             }
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
         return list;
     }
-
-    public FnbItem findById(int id) throws SQLException {
+    public List<FnbItem> findAllActive() {
+        List<FnbItem> list = new ArrayList<>();
+        // Thêm "WHERE i.is_active=1"
         String sql = """
             SELECT i.*, c.name AS category_name
             FROM dbo.FnbItem i
             LEFT JOIN dbo.FnbCategory c ON c.category_id = i.category_id
-            WHERE i.item_id = ?
+            WHERE i.is_active=1
+            ORDER BY i.category_id, i.name
         """;
+        try (Connection conn = Db.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                // Tận dụng hàm map bạn đã có
+                list.add(map(rs)); 
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+    public FnbItem findById(int id) throws SQLException {
+        String sql = """
+                     SELECT i.*, c.name AS category_name
+                     FROM dbo.FnbItem i
+                     LEFT JOIN dbo.FnbCategory c ON c.category_id = i.category_id
+                     WHERE i.item_id = ?
+                 """;
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
@@ -66,10 +98,11 @@ public class FnbItemDao {
     }
 
     public int insert(FnbItem x) throws SQLException {
+        // <-- Cập nhật SQL (thêm image_url)
         String sql = """
-            INSERT INTO dbo.FnbItem(category_id, code, name, price, is_active)
-            VALUES(?,?,?,?,?)
-        """;
+                     INSERT INTO dbo.FnbItem(category_id, code, name, price, is_active, image_url)
+                     VALUES(?,?,?,?,?,?)
+                 """;
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             if (x.getCategoryId() == null) {
                 ps.setNull(1, Types.INTEGER);
@@ -80,16 +113,18 @@ public class FnbItemDao {
             ps.setNString(3, x.getName());
             ps.setDouble(4, x.getPrice());
             ps.setBoolean(5, x.isActive());
+            ps.setNString(6, x.getImageUrl()); // <-- Cập nhật
             return ps.executeUpdate();
         }
     }
 
     public int update(FnbItem x) throws SQLException {
+         // <-- Cập nhật SQL (thêm image_url)
         String sql = """
-            UPDATE dbo.FnbItem
-            SET category_id=?, code=?, name=?, price=?, is_active=?
-            WHERE item_id=?
-        """;
+                     UPDATE dbo.FnbItem
+                     SET category_id=?, code=?, name=?, price=?, is_active=?, image_url=?
+                     WHERE item_id=?
+                 """;
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             if (x.getCategoryId() == null) {
                 ps.setNull(1, Types.INTEGER);
@@ -100,7 +135,8 @@ public class FnbItemDao {
             ps.setNString(3, x.getName());
             ps.setDouble(4, x.getPrice());
             ps.setBoolean(5, x.isActive());
-            ps.setInt(6, x.getItemId());
+            ps.setNString(6, x.getImageUrl()); // <-- Cập nhật
+            ps.setInt(7, x.getItemId());      // <-- Cập nhật
             return ps.executeUpdate();
         }
     }

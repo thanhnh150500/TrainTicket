@@ -5,11 +5,9 @@
 package vn.ttapp.model;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Date;
 
-/**
- *
- * @author dotri
- */
 public class Trip {
     public Integer tripId;
     public Integer routeId;
@@ -22,6 +20,7 @@ public class Trip {
     private String destName;
     private String trainCode;
     private String trainName;
+    private String departAtStr;
     public Trip() {
     }
 
@@ -120,6 +119,38 @@ public class Trip {
 
     public void setTrainName(String trainName) {
         this.trainName = trainName;
+    }
+
+    public String getDepartAtStr() {
+        return departAtStr;
+    }
+
+    public void setDepartAtStr(String departAtStr) {
+        this.departAtStr = departAtStr;
+    }
+    
+    /**
+     * Helper: trả về departAt dưới dạng java.util.Date để JSP fmt:formatDate xử lý dễ dàng
+     */
+    public Date getDepartAtDate() {
+        if (this.departAt == null) return null;
+        try {
+            return Date.from(this.departAt.atZone(ZoneId.systemDefault()).toInstant());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Helper: trả về arriveAt dưới dạng java.util.Date để JSP fmt:formatDate xử lý dễ dàng
+     */
+    public Date getArriveAtDate() {
+        if (this.arriveAt == null) return null;
+        try {
+            return Date.from(this.arriveAt.atZone(ZoneId.systemDefault()).toInstant());
+        } catch (Exception e) {
+            return null;
+        }
     }
     
 }

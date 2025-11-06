@@ -40,7 +40,18 @@ public class FnbCategoryDao {
             }
         }
     }
-
+    public List<FnbCategory> findAllActive() throws SQLException {
+        List<FnbCategory> list = new ArrayList<>();
+        String sql = "SELECT * FROM dbo.FnbCategory WHERE is_active=1 ORDER BY name";
+        try (Connection conn = Db.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                list.add(map(rs));
+            }
+        }
+        return list;
+    }
     public int insert(String name, boolean active) throws SQLException {
         String sql = "INSERT INTO dbo.FnbCategory(name, is_active) VALUES(?, ?)";
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
