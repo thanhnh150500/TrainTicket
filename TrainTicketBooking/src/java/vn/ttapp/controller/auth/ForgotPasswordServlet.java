@@ -11,8 +11,7 @@ import java.util.UUID;
 import vn.ttapp.config.Db;
 import vn.ttapp.dao.UserDao;
 import vn.ttapp.model.User;
-import vn.ttapp.service.EmailService;           // nếu chưa cấu hình JNDI mail/Session có thể comment
-import java.sql.Timestamp;                     // QUAN TRỌNG: dùng cho expires_at
+import java.sql.Timestamp;
 
 @WebServlet(name = "ForgotPasswordServlet", urlPatterns = {"/auth/forgot"})
 public class ForgotPasswordServlet extends HttpServlet {
@@ -87,7 +86,6 @@ public class ForgotPasswordServlet extends HttpServlet {
                 System.out.println("[DEBUG] Reset link: " + resetLink);
 
                 try {
-                    new EmailService().sendResetEmail(user.getEmail(), resetLink);
                 } catch (Exception mailEx) {
                     System.err.println("[MAIL][ERROR] " + mailEx.getClass().getName() + ": " + mailEx.getMessage());
                     mailEx.printStackTrace();

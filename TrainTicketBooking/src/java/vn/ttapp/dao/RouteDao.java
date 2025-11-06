@@ -65,6 +65,19 @@ public class RouteDao {
         }
     }
 
+    /**
+     * ✅ Thêm mới: kiểm tra route tồn tại theo ID
+     */
+    public boolean existsById(int routeId) throws SQLException {
+        String sql = "SELECT 1 FROM dbo.Route WHERE route_id = ?";
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, routeId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
     public Integer create(int originId, int destId, String code) throws SQLException {
         String sql = """
             INSERT INTO dbo.Route(origin_station_id, dest_station_id, code)
@@ -102,29 +115,4 @@ public class RouteDao {
             return ps.executeUpdate();
         }
     }
-    
-//    public Route findByIdWithStations(int routeId) throws SQLException {
-//        String sql = """
-//            SELECT r.route_id, r.code,
-//                   s1.station_id AS origin_id, s1.name AS origin_name,
-//                   s2.station_id AS dest_id,   s2.name AS dest_name
-//            FROM dbo.Route r
-//            JOIN dbo.Station s1 ON s1.station_id = r.origin_station_id
-//            JOIN dbo.Station s2 ON s2.station_id = r.dest_station_id
-//            WHERE r.route_id = ?
-//        """;
-//        try (Connection c = Db.getConnection();
-//             PreparedStatement ps = c.prepareStatement(sql)) {
-//            ps.setInt(1, routeId);
-//            try (ResultSet rs = ps.executeQuery()) {
-//                if (!rs.next()) return null;
-//                Route r = new Route();
-//                r.setRouteId(rs.getInt("route_id"));
-//                r.setCode(rs.getString("code"));
-//                r.setOriginName(rs.getString("origin_name"));
-//                r.setDestName(rs.getString("dest_name"));
-//                return r;
-//            }
-//        }
-//    }
 }

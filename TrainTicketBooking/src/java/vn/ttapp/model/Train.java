@@ -1,17 +1,10 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package vn.ttapp.model;
 
-/**
- *
- * @author dotri
- */
 public class Train {
-    public Integer trainId;
-    public String  code;
-    public String  name;
+
+    private Integer trainId;
+    private String code;
+    private String name;
 
     public Train() {
     }
@@ -45,5 +38,4 @@ public class Train {
     public void setName(String name) {
         this.name = name;
     }
-    
 }

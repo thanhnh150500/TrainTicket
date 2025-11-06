@@ -2,15 +2,11 @@ package vn.ttapp.controller.customer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.fasterxml.jackson.databind.SerializationFeature;
-
 import vn.ttapp.service.SeatService;
+import com.fasterxml.jackson.databind.SerializationFeature;
 
 import vn.ttapp.model.HoldDtos.HoldRequest;
 import vn.ttapp.model.HoldDtos.HoldResponse;
-import vn.ttapp.model.HoldDtos.HeldItem;
-import vn.ttapp.model.HoldDtos.ReleaseRequest;
-import vn.ttapp.model.HoldDtos.ReleaseResponse;
 
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;

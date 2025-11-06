@@ -22,26 +22,83 @@ public class StationService {
 
     public Integer create(Integer cityId, String code, String name, String address) throws SQLException {
         if (cityId == null || !cityDao.existsById(cityId)) {
-            return null;     // city invalid
+            return null; // city invalid
         }
-        if (stationDao.codeExists(code)) {
-            return null;                        // duplicate code
+
+        String normCode = normalizeCode(code);
+        String normName = normalizeName(name);
+        String normAddr = normalizeAddress(address);
+
+        if (normCode == null || normName == null) {
+            return null;
         }
-        return stationDao.create(cityId, code, name, address);
+        if (stationDao.codeExists(normCode)) {
+            return null; // duplicate code
+        }
+
+        return stationDao.create(cityId, normCode, normName, normAddr);
     }
 
     public boolean update(Station s) throws SQLException {
-        if (s.getCityId() == null || !cityDao.existsById(s.getCityId())) {
+        if (s.getStationId() == null || s.getCityId() == null || !cityDao.existsById(s.getCityId())) {
             return false;
         }
-        Station existed = stationDao.findByCode(s.getCode());
+
+        String normCode = normalizeCode(s.getCode());
+        String normName = normalizeName(s.getName());
+        String normAddr = normalizeAddress(s.getAddress());
+        if (normCode == null || normName == null) {
+            return false;
+        }
+
+        Station existed = stationDao.findByCode(normCode);
         if (existed != null && !existed.getStationId().equals(s.getStationId())) {
-            return false;
+            return false; // code đã thuộc về bản ghi khác
         }
+
+        s.setCode(normCode);
+        s.setName(normName);
+        s.setAddress(normAddr);
+
         return stationDao.update(s) > 0;
     }
 
     public boolean delete(int id) throws SQLException {
         return stationDao.delete(id) > 0;
+    }
+
+    // ------- helpers -------
+    private String normalizeCode(String code) {
+        if (code == null) {
+            return null;
+        }
+        String s = code.trim().toUpperCase();
+        if (s.isEmpty() || s.length() > 20) {
+            return null;
+        }
+        // chỉ cho chữ/số/gạch dưới/gạch ngang
+        if (!s.matches("[A-Z0-9\\-_]+")) {
+            return null;
+        }
+        return s;
+    }
+
+    private String normalizeName(String name) {
+        if (name == null) {
+            return null;
+        }
+        String s = name.trim();
+        if (s.isEmpty() || s.length() > 150) {
+            return null;
+        }
+        return s;
+    }
+
+    private String normalizeAddress(String addr) {
+        if (addr == null) {
+            return null;
+        }
+        String s = addr.trim();
+        return s.isEmpty() ? null : (s.length() > 255 ? s.substring(0, 255) : s);
     }
 }
