@@ -1,5 +1,8 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ taglib prefix="c"   uri="jakarta.tags.core" %>
+<%@ taglib prefix="fmt" uri="jakarta.tags.fmt"  %>
+<c:set var="ctx" value="${pageContext.request.contextPath}" />
+<fmt:setLocale value="vi_VN" />
 <!DOCTYPE html>
 <html lang="vi">
     <head>

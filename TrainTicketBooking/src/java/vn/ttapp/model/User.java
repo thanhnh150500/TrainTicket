@@ -4,6 +4,13 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * User entity cho hệ thống đặt vé tàu.
+ *
+ * - Dùng UUID làm khóa chính (user_id) - Chứa đầy đủ thông tin cơ bản (email,
+ * họ tên, sđt, địa chỉ, ...). - Có danh sách vai trò (roles) để xác định quyền
+ * hạn: ADMIN / MANAGER / STAFF / CUSTOMER.
+ */
 public class User {
 
     private UUID userId;
@@ -15,7 +22,23 @@ public class User {
     private boolean active;
     private Instant createdAt;
     private Instant updatedAt;
-    private List<Role> roles; // <-- THÊM TRƯỜNG MỚI ĐỂ CHỨA VAI TRÒ
+
+    /**
+     * Danh sách vai trò của user
+     */
+    private List<Role> roles;
+
+    // ======== Constructors ======== //
+    public User() {
+    }
+
+    public User(UUID userId, String email, String fullName) {
+        this.userId = userId;
+        this.email = email;
+        this.fullName = fullName;
+    }
+
+    // ======== Getter / Setter ======== //
     public UUID getUserId() {
         return userId;
     }
@@ -95,5 +118,48 @@ public class User {
     public void setRoles(List<Role> roles) {
         this.roles = roles;
     }
-    
+
+    // ======== Helper methods ======== //
+    /**
+     * Trả về true nếu user có role ADMIN
+     */
+    public boolean isAdmin() {
+        if (roles == null) {
+            return false;
+        }
+        return roles.stream().anyMatch(r -> r != null && "ADMIN".equalsIgnoreCase(r.getCode()));
+    }
+
+    /**
+     * Trả về true nếu user có role MANAGER
+     */
+    public boolean isManager() {
+        if (roles == null) {
+            return false;
+        }
+        return roles.stream().anyMatch(r -> r != null && "MANAGER".equalsIgnoreCase(r.getCode()));
+    }
+
+    /**
+     * Trả về true nếu user có role STAFF_*
+     */
+    public boolean isStaff() {
+        if (roles == null) {
+            return false;
+        }
+        return roles.stream().anyMatch(r -> {
+            String c = (r != null && r.getCode() != null) ? r.getCode().toUpperCase() : "";
+            return c.startsWith("STAFF_");
+        });
+    }
+
+    @Override
+    public String toString() {
+        return "User{"
+                + "id=" + userId
+                + ", email='" + email + '\''
+                + ", fullName='" + fullName + '\''
+                + ", roles=" + (roles != null ? roles.size() : 0)
+                + '}';
+    }
 }

@@ -37,7 +37,7 @@ public class TripSearchServlet extends HttpServlet {
         s = s.trim();
         var fmts = List.of(
                 DateTimeFormatter.ISO_LOCAL_DATE, // yyyy-MM-dd
-                DateTimeFormatter.ofPattern("dd/MM/yyyy")
+                DateTimeFormatter.ofPattern("dd/MM/yyyy") // dd/MM/yyyy
         );
         for (var f : fmts) {
             try {
@@ -145,6 +145,7 @@ public class TripSearchServlet extends HttpServlet {
                 backWithError(request, response, "Ngày đi không hợp lệ. Dùng yyyy-MM-dd hoặc dd/MM/yyyy.");
                 return;
             }
+
             LocalDate returnDate = null;
             if ("ROUNDTRIP".equals(tripType)) {
                 if (returnRaw.isBlank()) {
@@ -161,7 +162,9 @@ public class TripSearchServlet extends HttpServlet {
                     return;
                 }
             }
+
             LocalTime departTime = timeRaw.isBlank() ? null : parseTimeLenient(timeRaw);
+
             int pax = 1;
             try {
                 if (!paxRaw.isBlank()) {
@@ -176,13 +179,8 @@ public class TripSearchServlet extends HttpServlet {
 
             Optional<Trip> chosenOutbound
                     = (sr.outbound == null || sr.outbound.isEmpty())
-                    ? Optional.<Trip>empty()
+                    ? Optional.empty()
                     : sr.outbound.stream().min(Comparator.comparing(Trip::getDepartAt));
-
-            if (chosenOutbound.isEmpty()) {
-                backWithError(request, response, "Không có chuyến phù hợp cho chiều đi.");
-                return;
-            }
 
             Optional<Trip> chosenInbound = Optional.empty();
             if ("ROUNDTRIP".equals(tripType) && sr.inbound != null && !sr.inbound.isEmpty()) {
@@ -202,7 +200,7 @@ public class TripSearchServlet extends HttpServlet {
             ctx.setPax(pax);
 
             ss.setAttribute("searchCtx", ctx);
-            ss.setAttribute("chosenOutboundTripId", chosenOutbound.get().getTripId());
+            ss.setAttribute("chosenOutboundTripId", chosenOutbound.map(Trip::getTripId).orElse(null));
             ss.setAttribute("chosenInboundTripId", chosenInbound.map(Trip::getTripId).orElse(null));
 
             LocalDate viewDate = departDate;
@@ -210,20 +208,29 @@ public class TripSearchServlet extends HttpServlet {
             List<DayTabVm> days = tripListDao.buildDayTabs(request, viewDate, originId, destId);
 
             DateTimeFormatter DMY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-            request.setAttribute("routeTitle", (originNm.isBlank() ? "" : originNm) + " → " + (destNm.isBlank() ? "" : destNm));
+            request.setAttribute("routeTitle",
+                    (originNm.isBlank() ? "" : originNm) + " → " + (destNm.isBlank() ? "" : destNm));
             request.setAttribute("activeDateLabel", DMY.format(viewDate));
             request.setAttribute("searchDate", viewDate);
             request.setAttribute("days", days);
             request.setAttribute("trips", trips);
+
+            // cờ để JSP hiển thị thông báo rỗng đẹp mắt thay vì bị redirect
+            request.setAttribute("emptyOutbound", (sr.outbound == null || sr.outbound.isEmpty()));
+            request.setAttribute("emptyInbound", "ROUNDTRIP".equals(tripType)
+                    && (sr.inbound == null || sr.inbound.isEmpty()));
+
             request.setAttribute("prevDateUrl",
-                    request.getContextPath() + "/trips?originId=" + originId + "&destId=" + destId + "&date=" + viewDate.minusDays(1));
+                    request.getContextPath() + "/trips?originId=" + originId
+                    + "&destId=" + destId + "&date=" + viewDate.minusDays(1));
             request.setAttribute("nextDateUrl",
-                    request.getContextPath() + "/trips?originId=" + originId + "&destId=" + destId + "&date=" + viewDate.plusDays(1));
+                    request.getContextPath() + "/trips?originId=" + originId
+                    + "&destId=" + destId + "&date=" + viewDate.plusDays(1));
 
             request.getRequestDispatcher("/WEB-INF/views/customer/triplist.jsp").forward(request, response);
 
         } catch (Exception ex) {
-            ex.printStackTrace(); // xem log server
+            ex.printStackTrace(); // log server
             HttpSession ss2 = request.getSession(true);
             String msg = ex.getClass().getSimpleName();
             if (ex.getMessage() != null && !ex.getMessage().isBlank()) {
@@ -231,9 +238,7 @@ public class TripSearchServlet extends HttpServlet {
             }
             ss2.setAttribute("error", "Lỗi tìm kiếm: " + msg);
             response.sendRedirect(request.getContextPath() + "/home");
-            return;
         }
-
     }
 
     /* redirect về /home với thông báo lỗi (void) */

@@ -1,5 +1,9 @@
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ taglib prefix="c"  uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
+
+<c:set var="ctx" value="${pageContext.request.contextPath}" />
+
 <!DOCTYPE html>
 <html lang="vi">
     <head>
@@ -13,7 +17,7 @@
         <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
         <!-- Custom CSS (dùng chung với login) -->
-        <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/auth.css">
+        <link rel="stylesheet" href="${ctx}/assets/css/auth.css">
     </head>
     <body class="bg-light">
 
@@ -24,60 +28,83 @@
             <c:if test="${not empty error}">
                 <div class="alert alert-danger text-center fw-semibold py-2 mb-3">
                     <i class="bi bi-x-circle me-1"></i>
-                    ${error}
+                    <c:out value="${error}"/>
                 </div>
             </c:if>
 
-            <form method="post" action="${pageContext.request.contextPath}/auth/register" id="regForm">
+            <form method="post" action="${ctx}/auth/register" id="regForm" novalidate autocomplete="on">
                 <input type="hidden" name="_csrf" value="${sessionScope.csrfToken}"/>
 
+                <!-- Giữ lại next nếu có (ưu tiên request attr, sau đó param) -->
+                <c:choose>
+                    <c:when test="${not empty next}">
+                        <input type="hidden" name="next" value="${fn:escapeXml(next)}"/>
+                    </c:when>
+                    <c:when test="${not empty param.next}">
+                        <input type="hidden" name="next" value="${fn:escapeXml(param.next)}"/>
+                    </c:when>
+                </c:choose>
+
                 <div class="mb-3">
-                    <label class="form-label">Họ và tên</label>
-                    <input name="fullName"
-                           class="form-control"
-                           placeholder="Nguyễn Văn A"
-                           value="${param.fullName}"
-                           required autofocus>
+                    <label class="form-label" for="fullName">Họ và tên</label>
+                    <input
+                        id="fullName"
+                        name="fullName"
+                        class="form-control"
+                        placeholder="Nguyễn Văn A"
+                        value="${fn:escapeXml(fullName)}"
+                        required
+                        autofocus
+                        autocomplete="name" />
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Email</label>
-                    <input type="email"
-                           name="email"
-                           class="form-control"
-                           placeholder="you@example.com"
-                           value="${param.email}"
-                           required>
+                    <label class="form-label" for="email">Email</label>
+                    <input
+                        id="email"
+                        type="email"
+                        name="email"
+                        class="form-control"
+                        placeholder="you@example.com"
+                        value="${fn:escapeXml(email)}"
+                        required
+                        autocomplete="username" />
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Mật khẩu</label>
+                    <label class="form-label" for="regPassword">Mật khẩu</label>
                     <div class="input-group">
-                        <input type="password"
-                               name="password"
-                               id="regPassword"
-                               class="form-control"
-                               placeholder="••••••••"
-                               minlength="8"
-                               required>
-                        <button type="button" class="btn btn-outline-secondary" id="toggleRegPassword" tabindex="-1">
-                            <i class="bi bi-eye"></i>
+                        <input
+                            type="password"
+                            name="password"
+                            id="regPassword"
+                            class="form-control"
+                            placeholder="••••••••"
+                            minlength="8"
+                            required
+                            autocomplete="new-password" />
+                        <button type="button" class="btn btn-outline-secondary" id="toggleRegPassword" tabindex="-1" aria-label="Hiện/ẩn mật khẩu">
+                            <i class="bi bi-eye" aria-hidden="true"></i>
                         </button>
                     </div>
                     <div class="form-text">Mật khẩu tối thiểu 8 ký tự.</div>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Xác nhận mật khẩu</label>
+                    <label class="form-label" for="confirmPassword">Xác nhận mật khẩu</label>
                     <div class="input-group">
-                        <input type="password"
-                               id="regConfirm"
-                               class="form-control"
-                               placeholder="••••••••"
-                               minlength="8"
-                               required>
-                        <button type="button" class="btn btn-outline-secondary" id="toggleRegConfirm" tabindex="-1">
-                            <i class="bi bi-eye"></i>
+                        <!-- name=confirmPassword để servlet đọc -->
+                        <input
+                            type="password"
+                            id="confirmPassword"
+                            name="confirmPassword"
+                            class="form-control"
+                            placeholder="••••••••"
+                            minlength="8"
+                            required
+                            autocomplete="new-password" />
+                        <button type="button" class="btn btn-outline-secondary" id="toggleRegConfirm" tabindex="-1" aria-label="Hiện/ẩn mật khẩu">
+                            <i class="bi bi-eye" aria-hidden="true"></i>
                         </button>
                     </div>
                     <div id="confirmHelp" class="form-text text-danger d-none" aria-live="polite">
@@ -91,7 +118,7 @@
 
                 <p class="text-center mt-3 mb-0">
                     Đã có tài khoản?
-                    <a href="${pageContext.request.contextPath}/auth/login" class="fw-semibold">Đăng nhập</a>
+                    <a href="${ctx}/auth/login" class="fw-semibold">Đăng nhập</a>
                 </p>
             </form>
         </div>
@@ -99,42 +126,69 @@
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
         <script>
-            const pw = document.getElementById('password');
-            const cf = document.getElementById('confirmPassword');
-            const msg = document.getElementById('confirmHelp');
-            let cfDirty = false; // chỉ báo lỗi sau khi user chạm vào ô xác nhận
+            document.addEventListener('DOMContentLoaded', function () {
+                const pw = document.getElementById('regPassword');
+                const cf = document.getElementById('confirmPassword');
+                const tPw = document.getElementById('toggleRegPassword');
+                const tCf = document.getElementById('toggleRegConfirm');
+                const msg = document.getElementById('confirmHelp');
+                const form = document.getElementById('regForm');
+                let cfDirty = false;
 
-            function validateConfirm() {
-                // Ẩn lỗi nếu chưa "dirty" hoặc chưa có đủ 2 ô
-                if (!cfDirty || !pw.value || !cf.value) {
-                    msg.classList.add('d-none');
-                    cf.classList.remove('is-invalid');
-                    cf.setCustomValidity(''); // xoá trạng thái invalid của HTML5
-                    return;
+                function bindToggle(btn, input) {
+                    if (!btn || !input)
+                        return;
+                    btn.addEventListener('click', function () {
+                        input.type = (input.type === 'password') ? 'text' : 'password';
+                        const icon = btn.querySelector('i');
+                        if (icon) {
+                            icon.classList.toggle('bi-eye');
+                            icon.classList.toggle('bi-eye-slash');
+                        }
+                        input.focus();
+                    });
                 }
-                // Hiện lỗi khi lệch
-                if (pw.value !== cf.value) {
-                    msg.classList.remove('d-none');
-                    cf.classList.add('is-invalid');
-                    cf.setCustomValidity('Passwords do not match');
-                } else {
-                    msg.classList.add('d-none');
-                    cf.classList.remove('is-invalid');
-                    cf.setCustomValidity('');
-                }
-            }
 
-            cf.addEventListener('input', () => {
-                cfDirty = true;
-                validateConfirm();
-            });
-            pw.addEventListener('input', validateConfirm);
-            
-            document.querySelector('form').addEventListener('submit', (e) => {
-                cfDirty = true;
-                validateConfirm();
-                if (!e.target.checkValidity())
-                    e.preventDefault();
+                function validateConfirm() {
+                    if (!pw || !cf || !msg)
+                        return;
+                    if (!cfDirty || !pw.value || !cf.value) {
+                        msg.classList.add('d-none');
+                        cf.classList.remove('is-invalid');
+                        cf.setCustomValidity('');
+                        return;
+                    }
+                    if (pw.value !== cf.value) {
+                        msg.classList.remove('d-none');
+                        cf.classList.add('is-invalid');
+                        cf.setCustomValidity('Passwords do not match');
+                    } else {
+                        msg.classList.add('d-none');
+                        cf.classList.remove('is-invalid');
+                        cf.setCustomValidity('');
+                    }
+                }
+
+                if (cf)
+                    cf.addEventListener('input', () => {
+                        cfDirty = true;
+                        validateConfirm();
+                    });
+                if (pw)
+                    pw.addEventListener('input', validateConfirm);
+                if (form) {
+                    form.addEventListener('submit', (e) => {
+                        cfDirty = true;
+                        validateConfirm();
+                        if (!form.checkValidity()) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }
+                    });
+                }
+
+                bindToggle(tPw, pw);
+                bindToggle(tCf, cf);
             });
         </script>
 

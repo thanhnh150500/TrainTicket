@@ -9,17 +9,20 @@ import java.util.List;
 
 public class StationDao {
 
+    /* ================= MAPPER ================= */
     private Station map(ResultSet rs) throws SQLException {
         Station s = new Station();
+        // Dùng getObject(..., Integer.class) để giữ được null
         s.setStationId(rs.getObject("station_id", Integer.class));
         s.setCityId(rs.getObject("city_id", Integer.class));
         s.setCode(rs.getString("code"));
-        s.setName(rs.getString("name"));
-        s.setAddress(rs.getString("address"));
-        s.setCityName(rs.getString("city_name"));
+        s.setName(rs.getNString("name"));
+        s.setAddress(rs.getNString("address"));
+        s.setCityName(rs.getNString("city_name"));
         return s;
     }
 
+    /* ================= BASIC QUERIES ================= */
     public Station findById(int id) throws SQLException {
         String sql = """
             SELECT s.station_id, s.city_id, s.code, s.name, s.address,
@@ -37,6 +40,9 @@ public class StationDao {
     }
 
     public Station findByCode(String code) throws SQLException {
+        if (code == null || code.isBlank()) {
+            return null;
+        }
         String sql = """
             SELECT s.station_id, s.city_id, s.code, s.name, s.address,
                    c.name AS city_name
@@ -45,7 +51,7 @@ public class StationDao {
             WHERE UPPER(LTRIM(RTRIM(s.code))) = ?
         """;
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, code == null ? null : code.trim().toUpperCase());
+            ps.setString(1, code.trim().toUpperCase());
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? map(rs) : null;
             }
@@ -70,9 +76,22 @@ public class StationDao {
     }
 
     public boolean codeExists(String code) throws SQLException {
+        if (code == null || code.isBlank()) {
+            return false;
+        }
         String sql = "SELECT 1 FROM dbo.Station WHERE UPPER(LTRIM(RTRIM(code))) = ?";
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, code == null ? null : code.trim().toUpperCase());
+            ps.setString(1, code.trim().toUpperCase());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    public boolean existsById(int stationId) throws SQLException {
+        String sql = "SELECT 1 FROM dbo.Station WHERE station_id = ?";
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, stationId);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next();
             }
@@ -100,6 +119,7 @@ public class StationDao {
                 }
             }
         }
+        // Fallback khi DB không trả OUTPUT vì bất kỳ lý do gì
         Station s = findByCode(code);
         return s != null ? s.getStationId() : null;
     }
@@ -125,7 +145,8 @@ public class StationDao {
     }
 
     public int delete(int id) throws SQLException {
-        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement("DELETE FROM dbo.Station WHERE station_id = ?")) {
+        String sql = "DELETE FROM dbo.Station WHERE station_id = ?";
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, id);
             return ps.executeUpdate();
         }
@@ -133,6 +154,9 @@ public class StationDao {
 
     /* ===== Exact theo tên (bỏ dấu, không phân biệt hoa/thường) ===== */
     public Station findByNameExact(String name) throws SQLException {
+        if (name == null || name.isBlank()) {
+            return null;
+        }
         String sql = """
             SELECT s.station_id, s.city_id, s.code, s.name, s.address, c.name AS city_name
             FROM dbo.Station s
@@ -140,7 +164,7 @@ public class StationDao {
             WHERE LTRIM(RTRIM(s.name)) COLLATE SQL_Latin1_General_CP1_CI_AI = ?
         """;
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setNString(1, name == null ? null : name.trim());
+            ps.setNString(1, name.trim());
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? map(rs) : null;
             }
@@ -148,13 +172,16 @@ public class StationDao {
     }
 
     public Integer findIdByNameExact(String name) throws SQLException {
+        if (name == null || name.isBlank()) {
+            return null;
+        }
         String sql = """
             SELECT station_id
             FROM dbo.Station
             WHERE LTRIM(RTRIM(name)) COLLATE SQL_Latin1_General_CP1_CI_AI = ?
         """;
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setNString(1, name == null ? null : name.trim());
+            ps.setNString(1, name.trim());
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getInt(1) : null;
             }
@@ -203,21 +230,25 @@ public class StationDao {
         """;
 
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            // ORDER score params (5)
             ps.setNString(1, start);
             ps.setNString(2, start);
             ps.setNString(3, any);
             ps.setNString(4, any);
             ps.setString(5, codeLike);
+
+            // WHERE params (3)
             ps.setNString(6, any);
             ps.setNString(7, any);
             ps.setString(8, codeLike);
+
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getInt(1) : null;
             }
         }
     }
 
-    /* ===== Suggest autocomplete ===== */
+    /* ===== Suggest autocomplete (ưu tiên đầu từ, rồi chứa từ, rồi code) ===== */
     public List<Station> suggestByNameOrCode(String q, int limit) throws SQLException {
         String term = (q == null) ? "" : q.trim();
         String norm = term.replaceAll("\\s+", "");
@@ -262,7 +293,7 @@ public class StationDao {
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, lim);
 
-            // For ORDER score
+            // ORDER score params (7)
             ps.setNString(2, start);
             ps.setNString(3, start);
             ps.setNString(4, word);
@@ -271,7 +302,7 @@ public class StationDao {
             ps.setNString(7, any);
             ps.setNString(8, any);
 
-            // WHERE params
+            // WHERE params (3)
             ps.setNString(9, any);
             ps.setNString(10, any);
             ps.setString(11, codeLike);
@@ -285,6 +316,7 @@ public class StationDao {
         return out;
     }
 
+    /* ===== Theo vùng / thành phố ===== */
     public List<Station> findByRegionCode(String regionCode) throws SQLException {
         String sql = """
             SELECT s.station_id, s.city_id, s.code, s.name, s.address, c.name AS city_name
@@ -326,6 +358,7 @@ public class StationDao {
         return list;
     }
 
+    /* ===== Helpers nhỏ ===== */
     public String findNameById(int id) throws SQLException {
         String sql = "SELECT name FROM dbo.Station WHERE station_id = ?";
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
@@ -337,9 +370,12 @@ public class StationDao {
     }
 
     public Integer findIdByCode(String code) throws SQLException {
+        if (code == null || code.isBlank()) {
+            return null;
+        }
         String sql = "SELECT station_id FROM dbo.Station WHERE UPPER(LTRIM(RTRIM(code))) = ?";
         try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, code == null ? null : code.trim().toUpperCase());
+            ps.setString(1, code.trim().toUpperCase());
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getInt(1) : null;
             }

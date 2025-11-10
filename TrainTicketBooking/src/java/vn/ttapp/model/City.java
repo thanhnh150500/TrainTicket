@@ -1,22 +1,28 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package vn.ttapp.model;
 
 /**
- *
- * @author dotri
+ * City model khớp bảng dbo.City: - city_id (INT, PK) - region_id (INT, FK ->
+ * Region) - code (NVARCHAR(20)) - name (NVARCHAR(100))
  */
 public class City {
+
     private Integer cityId;
+    private Integer regionId;
     private String code;
     private String name;
+
     public City() {
     }
 
     public City(Integer cityId, String name) {
         this.cityId = cityId;
+        this.name = name;
+    }
+
+    public City(Integer cityId, Integer regionId, String code, String name) {
+        this.cityId = cityId;
+        this.regionId = regionId;
+        this.code = code;
         this.name = name;
     }
 
@@ -28,12 +34,12 @@ public class City {
         this.cityId = cityId;
     }
 
-    public String getName() {
-        return name;
+    public Integer getRegionId() {
+        return regionId;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setRegionId(Integer regionId) {
+        this.regionId = regionId;
     }
 
     public String getCode() {
@@ -43,5 +49,23 @@ public class City {
     public void setCode(String code) {
         this.code = code;
     }
-    
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    /* Optional tiện lợi cho debug/log */
+    @Override
+    public String toString() {
+        return "City{"
+                + "cityId=" + cityId
+                + ", regionId=" + regionId
+                + ", code='" + code + '\''
+                + ", name='" + name + '\''
+                + '}';
+    }
 }

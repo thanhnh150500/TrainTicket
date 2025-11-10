@@ -3,62 +3,7 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/model/FnbItem.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/controller/manager/StationManagerServlet.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/controller/admin/AdminDashboardServlet.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/web/WEB-INF/views/manager/trip_form.jsp</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/controller/customer/TripSearchServlet.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/dao/SeatDao.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/model/FnbItemRevenue.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/web/WEB-INF/views/manager/fnb_item_list.jsp</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/model/FnbOrderItem.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/web/WEB-INF/views/staff/staff_error.jsp</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/web/WEB-INF/views/staff/staff_pos.jsp</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/dao/FnbOrderItemDao.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/web/WEB-INF/views/manager/station_list.jsp</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/controller/manager/FnbManagerServlet.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/dao/FnbOrderDao.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/controller/manager/FnbItemManagerServlet.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/web/WEB-INF/views/admin/admin_user_list.jsp</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/model/User.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/dao/RoleDao.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/dao/UserDao.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/dao/TrainDao.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/service/SeatService.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/model/FnbOrder.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/controller/manager/ManagerFnbOrderServlet.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/web/WEB-INF/views/manager/station_form.jsp</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/dao/FnbCategoryDao.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/model/FnbCategory.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/web/WEB-INF/views/manager/fnb_category_list.jsp</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/web/WEB-INF/views/layout/_header_staff.jsp</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/service/FnbItemService.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/dao/StationDao.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/controller/admin/AdminUserServlet.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/web/WEB-INF/views/admin/dashboard.jsp</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/controller/auth/LoginServlet.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/controller/staff/StaffOrderServlet.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/service/TripService.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/web/WEB-INF/views/manager/trip_view.jsp</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/dao/CityDao.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/model/FnbDailyRevenue.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/web/WEB-INF/views/layout/_header_manager.jsp</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/web/WEB-INF/views/layout/_header_admin.jsp</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/model/Station.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/web/WEB-INF/views/staff/staff_select_trip.jsp</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/dao/TripDao.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/service/FnbOrderService.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/service/FnbService.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/web/WEB-INF/views/manager/fnb_category_form.jsp</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/service/UserService.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/dao/FnbItemDao.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/web/WEB-INF/views/manager/trip_list.jsp</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/web/WEB-INF/views/manager/fnb_item_form.jsp</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/controller/manager/TripManagerServlet.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/web/WEB-INF/views/manager/fnb-orders.jsp</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/service/StationService.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/src/java/vn/ttapp/dao/TripStaffDao.java</file>
-            <file>file:/B:/ProjectSWP/TrainTicket/TrainTicketBooking/web/WEB-INF/views/admin/admin_user_form.jsp</file>
+            <file>file:/C:/Users/New%20User/train-ticket-booking/TrainTicketBooking/src/java/vn/ttapp/security/CsrfFilter.java</file>
         </group>
     </open-files>
 </project-private>

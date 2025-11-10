@@ -1,5 +1,8 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ taglib prefix="c"   uri="jakarta.tags.core" %>
+<%@ taglib prefix="fmt" uri="jakarta.tags.fmt"  %>
+<c:set var="ctx" value="${pageContext.request.contextPath}" />
+<fmt:setLocale value="vi_VN" />
 <!DOCTYPE html>
 <html lang="vi">
     <head>
@@ -87,15 +90,15 @@
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
         <script>
-                                (function () {
-                                    const successEl = document.getElementById('toast-success');
-                                    const errorEl = document.getElementById('toast-error');
-                                    [successEl, errorEl].forEach(function (el) {
-                                        if (!el)
-                                            return;
-                                        new bootstrap.Toast(el, {delay: 2500, autohide: true}).show();
-                                    });
-                                })();
+                                            (function () {
+                                                const successEl = document.getElementById('toast-success');
+                                                const errorEl = document.getElementById('toast-error');
+                                                [successEl, errorEl].forEach(function (el) {
+                                                    if (!el)
+                                                        return;
+                                                    new bootstrap.Toast(el, {delay: 2500, autohide: true}).show();
+                                                });
+                                            })();
         </script>
     </body>
 </html>

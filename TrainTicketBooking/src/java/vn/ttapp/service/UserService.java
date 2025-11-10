@@ -1,10 +1,12 @@
 /*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ * UserService
+ * -----------
+ * - Xử lý nghiệp vụ quản trị người dùng (dùng cho trang Admin/Manager).
+ * - Phối hợp với UserDao để truy vấn/ghi dữ liệu người dùng và vai trò.
+ * - Ghi chú:
+ *   + newPassword: nếu TẠO MỚI → bắt buộc; nếu CẬP NHẬT → để trống sẽ giữ nguyên mật khẩu cũ.
+ *   + email: chuẩn hoá (trim + toLowerCase) để đảm bảo duy nhất theo email.
+ *   + Mọi cập nhật User + Roles đều gộp trong 1 transaction.
  */
 package vn.ttapp.service;
 
@@ -16,91 +18,137 @@ import vn.ttapp.security.PasswordUtil;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
-/**
- * Service này xử lý nghiệp vụ cho Quản lý User
- */
 public class UserService {
-    
+
     private final UserDao userDao = new UserDao();
-    
+
+    /* READ APIs (LIST / DETAIL) */
     /**
-     * Lấy danh sách user (Nội bộ hoặc Khách hàng)
+     * Lấy danh sách người dùng theo loại: - "CUSTOMER": chỉ khách hàng (hoặc
+     * user chưa có role) - Khác/null: nhóm nội bộ (MANAGER/STAFF/…)
      */
     public List<User> getAllUsers(String roleType) throws SQLException {
-        if ("CUSTOMER".equals(roleType)) {
+        String key = (roleType == null) ? "" : roleType.trim().toUpperCase();
+        if ("CUSTOMER".equals(key)) {
             return userDao.findAllWithRoles("CUSTOMER");
         }
         return userDao.findAllWithRoles("INTERNAL");
     }
 
-    /**
-     * Lấy 1 user (bao gồm cả role)
-     */
     public User getUserWithRoles(String userId) throws SQLException {
         return userDao.findUserWithRoles(userId);
     }
-    
+
+    /*WRITE APIs (CREATE / UPDATE)*/
     /**
-     * Admin tạo/cập nhật user (Staff/Manager)
+     * Tạo mới hoặc cập nhật người dùng + cập nhật vai trò trong cùng 1
+     * transaction.
+     *
+     * @param user Model user (nếu userId = null → tạo mới; ngược lại → cập
+     * nhật)
+     * @param roleIds Danh sách role_id gán cho user (có thể null/empty)
+     * @param newPassword Mật khẩu thuần: bắt buộc khi TẠO MỚI; khi CẬP NHẬT để
+     * trống sẽ giữ nguyên.
+     * @return true nếu thành công, false nếu lỗi/vi phạm ràng buộc
      */
     public boolean saveUser(User user, List<Integer> roleIds, String newPassword) throws SQLException {
-        // (1) Kiểm tra Email
-        User existing = userDao.findByEmail(user.getEmail());
-        if (existing != null && !existing.getUserId().equals(user.getUserId())) {
-            // Email này đã tồn tại của 1 user khác
-            return false; 
+        // 0) Chuẩn hoá input
+        if (user == null) {
+            return false;
         }
 
-        // (2) Xử lý mật khẩu
-        if (newPassword != null && !newPassword.isBlank()) {
-            try {
-                String hash = PasswordUtil.hash(newPassword);
-                user.setPasswordHash(hash); // (Lưu hash vào model)
-            } catch (Exception e) {
-                e.printStackTrace();
+        // Chuẩn hoá email: trim + lowercase để đảm bảo duy nhất theo logic ứng dụng
+        if (user.getEmail() != null) {
+            user.setEmail(user.getEmail().trim().toLowerCase());
+        }
+        // Có thể thêm validate định dạng email nếu cần (regex đơn giản)…
+        // if (!isValidEmail(user.getEmail())) return false;
+
+        // 1) Kiểm tra trùng email (không tính chính user đang sửa)
+        User existedByEmail = userDao.findByEmail(user.getEmail());
+        if (existedByEmail != null) {
+            // Nếu đang cập nhật: cho phép tự trùng chính mình
+            if (user.getUserId() == null || !Objects.equals(existedByEmail.getUserId(), user.getUserId())) {
+                // Email đã thuộc về user khác
                 return false;
             }
         }
 
-        // (3) Bắt đầu Transaction
+        // 2) Xử lý mật khẩu:
+        //    - Tạo mới → bắt buộc newPassword
+        //    - Cập nhật → nếu newPassword rỗng thì KHÔNG đổi
+        if (user.getUserId() == null) {
+            if (newPassword == null || newPassword.isBlank()) {
+                // Không thể tạo user mới nếu thiếu mật khẩu
+                return false;
+            }
+            try {
+                String hash = PasswordUtil.hash(newPassword);
+                user.setPasswordHash(hash);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return false;
+            }
+        } else {
+            if (newPassword != null && !newPassword.isBlank()) {
+                try {
+                    String hash = PasswordUtil.hash(newPassword);
+                    user.setPasswordHash(hash); // set để Dao cập nhật cột password_hash
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return false;
+                }
+            } else {
+                // Giữ nguyên mật khẩu cũ → set null để Dao bỏ qua cột password_hash
+                user.setPasswordHash(null);
+            }
+        }
+
+        // 3) Transaction: tạo/cập nhật user + cập nhật roles
         try (Connection conn = Db.getConnection()) {
+            boolean origAuto = conn.getAutoCommit();
             conn.setAutoCommit(false);
             try {
-                String userId;
-                
+                UUID uid;
+
                 if (user.getUserId() == null) {
-                    // (3a) TẠO MỚI
-                    if (newPassword == null || newPassword.isBlank()) {
-                        // (Bắt buộc phải có pass khi tạo mới)
-                        throw new SQLException("Password is required for new user");
+                    // 3a) TẠO MỚI
+                    uid = userDao.adminCreateUser(user, conn);
+                    if (uid == null) {
+                        throw new SQLException("Failed to create user (no id returned)");
                     }
-                    userId = userDao.adminCreateUser(user, conn);
-                    if (userId == null) throw new SQLException("Failed to create user");
-                    // set created id back to model for consistency
-                    try {
-                        user.setUserId(UUID.fromString(userId));
-                    } catch (Exception ignore) {
-                    }
-                    
+                    user.setUserId(uid);
                 } else {
-                    // (3b) CẬP NHẬT
-                    userId = user.getUserId().toString();
+                    // 3b) CẬP NHẬT
+                    uid = user.getUserId();
                     userDao.adminUpdateUser(user, conn);
                 }
-                
-                // (4) Cập nhật Roles
-                userDao.adminUpdateRoles(UUID.fromString(userId), roleIds, conn);
-                
+
+                // 4) Cập nhật vai trò (xoá hết role cũ rồi thêm lại)
+                userDao.adminUpdateRoles(uid, roleIds, conn);
+
+                // 5) Commit
                 conn.commit();
+                conn.setAutoCommit(origAuto);
                 return true;
 
-            } catch (Exception e) {
-                conn.rollback();
-                e.printStackTrace();
+            } catch (Exception ex) {
+                // Rollback khi có lỗi
+                try {
+                    conn.rollback();
+                } catch (Exception ignore) {
+                }
+                try {
+                    conn.setAutoCommit(true);
+                } catch (Exception ignore) {
+                }
+                ex.printStackTrace();
                 return false;
             }
         }
     }
+
 }

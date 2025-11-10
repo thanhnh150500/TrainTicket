@@ -1,0 +1,67 @@
+/* =========================
+   stations_browse.css
+   ========================= */
+
+body {
+    font-family: "Inter", "Segoe UI", sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+}
+
+/* Tiêu đề trang */
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+.page-header h3 {
+    font-weight: 600;
+}
+
+/* Form lọc */
+form .form-label {
+    font-weight: 500;
+}
+form select,
+form input {
+    border-radius: 8px;
+}
+
+/* Bảng hiển thị ga */
+.table {
+    font-size: 0.95rem;
+}
+.table th {
+    font-weight: 600;
+}
+.table td {
+    vertical-align: middle;
+}
+.table-hover tbody tr:hover {
+    background-color: #f2f7ff;
+}
+
+/* Nút */
+.btn-outline-secondary {
+    border-radius: 8px;
+}
+.btn-primary {
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+/* Alert khi chưa chọn khu vực */
+.alert-info {
+    border-left: 4px solid #0d6efd;
+    background: #eef5ff;
+}
+
+/* Responsive nhỏ gọn */
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+}

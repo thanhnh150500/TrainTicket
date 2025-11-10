@@ -16,6 +16,7 @@
         <link rel="stylesheet" href="${ctx}/assets/bootstrap/css/bootstrap.min.css">
         <link rel="stylesheet" href="${ctx}/assets/icons/bootstrap-icons.min.css">
         <link rel="stylesheet" href="${ctx}/assets/css/trip.css">
+        <fmt:setLocale value="vi_VN"/>
     </head>
     <body class="bg-light">
         <%@ include file="/WEB-INF/views/layout/_header.jsp" %>
@@ -25,7 +26,12 @@
             <!-- Header route -->
             <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
                 <div class="d-flex align-items-center gap-2">
-                    <div class="text-secondary">Một chiều</div>
+                    <div class="text-secondary">
+                        <c:choose>
+                            <c:when test="${sc.tripType eq 'ROUNDTRIP'}">Khứ hồi</c:when>
+                            <c:otherwise>Một chiều</c:otherwise>
+                        </c:choose>
+                    </div>
                     <div class="vr"></div>
                     <div class="text-secondary">${empty sc.pax ? 1 : sc.pax} khách</div>
                 </div>
@@ -33,19 +39,19 @@
                 <div class="d-flex flex-wrap gap-2">
                     <div class="trip-input">
                         <i class="bi bi-geo-alt"></i>
-                        <span>${routeOriginCode}</span>
+                        <span>${empty sc.originName ? '—' : sc.originName}</span>
                     </div>
                     <div class="trip-swap"><i class="bi bi-arrow-left-right"></i></div>
                     <div class="trip-input">
                         <i class="bi bi-geo"></i>
-                        <span>${routeDestCode}</span>
+                        <span>${empty sc.destName ? '—' : sc.destName}</span>
                     </div>
                     <div class="trip-input">
                         <i class="bi bi-calendar3"></i>
                         <span>${activeDateLabel}</span>
                     </div>
 
-                    <!-- Sửa: quay lại home để chỉnh tìm kiếm -->
+                    <!-- Quay lại home để chỉnh tìm kiếm -->
                     <a class="btn btn-primary px-4" href="${ctx}/home">Tìm</a>
                 </div>
             </div>
@@ -67,39 +73,43 @@
 
                 <div class="days-strip d-flex flex-nowrap gap-3 overflow-auto pb-2">
                     <%
-                      java.time.LocalDate base = (java.time.LocalDate) request.getAttribute("searchDate");
-                      if (base == null) base = java.time.LocalDate.now();
+                        java.time.LocalDate base =
+                                (java.time.LocalDate) request.getAttribute("searchDate");
+                        if (base == null) base = java.time.LocalDate.now();
 
-                      String prev = (String) request.getAttribute("prevDateUrl");
-                      String next = (String) request.getAttribute("nextDateUrl");
-                      String urlPrefix = null;
-                      if (prev != null && prev.contains("date=")) {
-                        urlPrefix = prev.substring(0, prev.indexOf("date=") + "date=".length());
-                      } else if (next != null && next.contains("date=")) {
-                        urlPrefix = next.substring(0, next.indexOf("date=") + "date=".length());
-                      } else {
-                        urlPrefix = request.getContextPath() + "/trips?date="; // fallback
-                      }
+                        String prev = (String) request.getAttribute("prevDateUrl");
+                        String next = (String) request.getAttribute("nextDateUrl");
+                        String urlPrefix;
+                        if (prev != null && prev.contains("date=")) {
+                            urlPrefix = prev.substring(0, prev.indexOf("date=") + "date=".length());
+                        } else if (next != null && next.contains("date=")) {
+                            urlPrefix = next.substring(0, next.indexOf("date=") + "date=".length());
+                        } else {
+                            urlPrefix = request.getContextPath() + "/trips?date="; // fallback
+                        }
 
-                      java.time.format.DateTimeFormatter DMY = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy");
-                      java.util.Locale VI = new java.util.Locale("vi");
+                        java.time.format.DateTimeFormatter DMY =
+                                java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy");
+                        java.util.Locale VI = new java.util.Locale("vi");
 
-                      for (int offset = -1; offset <= 7; offset++) {
-                        java.time.LocalDate d = base.plusDays(offset);
-                        String activeClass = d.equals(base) ? " active" : "";
-                        String dateLabel = d.format(DMY);
-                        String weekLabel = d.getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, VI);
+                        for (int offset = -1; offset <= 7; offset++) {
+                            java.time.LocalDate d = base.plusDays(offset);
+                            String activeClass = d.equals(base) ? " active" : "";
+                            String dateLabel = d.format(DMY);
+                            String weekLabel = d.getDayOfWeek()
+                                .getDisplayName(java.time.format.TextStyle.FULL, VI);
                     %>
                     <a class="day-tab<%= activeClass %>" href="<%= urlPrefix + d.toString() %>">
                         <div class="dd"><%= dateLabel %></div>
                         <div class="wk"><%= weekLabel %></div>
                     </a>
                     <%
-                      }
+                        }
                     %>
                 </div>
             </div>
 
+            <!-- Thông báo -->
             <c:if test="${not empty message}">
                 <div class="alert alert-success mt-3">${message}</div>
             </c:if>
@@ -107,20 +117,32 @@
                 <div class="alert alert-danger mt-3">${error}</div>
             </c:if>
 
+            <!-- Cảnh báo không có chuyến chiều đi/chiều về (nếu có flag từ servlet) -->
+            <c:if test="${emptyOutbound}">
+                <div class="alert alert-warning mt-3">Không có chuyến phù hợp cho chiều đi.</div>
+            </c:if>
+            <c:if test="${sc.tripType eq 'ROUNDTRIP' and emptyInbound}">
+                <div class="alert alert-warning">Không có chuyến phù hợp cho chiều về.</div>
+            </c:if>
+
+            <!-- Danh sách chuyến -->
             <c:choose>
                 <c:when test="${empty trips}">
-                    <div class="alert alert-warning mt-3">Không có chuyến cho ngày này.</div>
+                    <div class="alert alert-info mt-3">Không có chuyến cho ngày này.</div>
                 </c:when>
                 <c:otherwise>
                     <div class="vstack gap-3 mt-3">
                         <c:forEach var="t" items="${trips}">
                             <%
-                              vn.ttapp.model.TripCardVm tvm =
-                                  (vn.ttapp.model.TripCardVm) pageContext.findAttribute("t");
-                              java.time.format.DateTimeFormatter HHMM =
-                                  java.time.format.DateTimeFormatter.ofPattern("HH:mm");
-                              String hhmmDep = (tvm.getDepartTime() == null) ? "--:--" : HHMM.format(tvm.getDepartTime());
-                              String hhmmArr = (tvm.getArriveTime() == null) ? "--:--" : HHMM.format(tvm.getArriveTime());
+                                // Lấy biến "t" từ EL để định dạng giờ (LocalTime) bằng Java 8
+                                vn.ttapp.model.TripCardVm tvm =
+                                        (vn.ttapp.model.TripCardVm) pageContext.getAttribute("t");
+                                java.time.format.DateTimeFormatter HHMM =
+                                        java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+                                String hhmmDep = (tvm != null && tvm.getDepartTime() != null)
+                                        ? HHMM.format(tvm.getDepartTime()) : "--:--";
+                                String hhmmArr = (tvm != null && tvm.getArriveTime() != null)
+                                        ? HHMM.format(tvm.getArriveTime()) : "--:--";
                             %>
 
                             <div class="card trip-card border-0 shadow-sm">
@@ -143,7 +165,9 @@
                                                         <i class="bi bi-arrow-right-short"></i>
                                                         ${t.durationMin div 60}h
                                                         <c:choose>
-                                                            <c:when test="${(t.durationMin mod 60) lt 10}">0${t.durationMin mod 60}p</c:when>
+                                                            <c:when test="${(t.durationMin mod 60) lt 10}">
+                                                                0${t.durationMin mod 60}p
+                                                            </c:when>
                                                             <c:otherwise>${t.durationMin mod 60}p</c:otherwise>
                                                         </c:choose>
                                                     </div>
@@ -164,10 +188,16 @@
                                         <div class="col-md-2 text-md-end">
                                             <div class="text-muted small mb-1">Từ</div>
                                             <div class="h5 fw-bold mb-2">
-                                                <fmt:formatNumber value="${t.minPrice}" type="number" groupingUsed="true"/>
-                                                <span class="text-muted small">đ</span>
+                                                <c:choose>
+                                                    <c:when test="${not empty t.minPrice}">
+                                                        <fmt:formatNumber value="${t.minPrice}" type="number" groupingUsed="true"/>
+                                                        <span class="text-muted small">đ</span>
+                                                    </c:when>
+                                                    <c:otherwise>—</c:otherwise>
+                                                </c:choose>
                                             </div>
-                                            <a class="btn btn-warning fw-semibold px-4" href="${ctx}/seatmap?tripId=${t.tripId}">
+                                            <a class="btn btn-warning fw-semibold px-4"
+                                               href="${ctx}/seatmap?tripId=${t.tripId}">
                                                 Chọn chỗ
                                             </a>
                                         </div>

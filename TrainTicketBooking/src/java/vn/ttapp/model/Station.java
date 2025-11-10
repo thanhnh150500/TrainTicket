@@ -1,20 +1,14 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package vn.ttapp.model;
 
-/**
- *
- * @author dotri
- */
 public class Station {
+
     private Integer stationId;
     private Integer cityId;
     private String code;
     private String name;
     private String address;
-    private String cityName;
+    private String cityName; // từ join với City
+
     public Station() {
     }
 
@@ -73,6 +67,16 @@ public class Station {
     public void setCityName(String cityName) {
         this.cityName = cityName;
     }
-    
-    
+
+    @Override
+    public String toString() {
+        return "Station{"
+                + "stationId=" + stationId
+                + ", cityId=" + cityId
+                + ", code='" + code + '\''
+                + ", name='" + name + '\''
+                + ", address='" + address + '\''
+                + ", cityName='" + cityName + '\''
+                + '}';
+    }
 }

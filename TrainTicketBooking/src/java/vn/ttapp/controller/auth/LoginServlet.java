@@ -1,114 +1,163 @@
 package vn.ttapp.controller.auth;
 
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/Servlet.java to edit this template
- */
-import java.io.IOException;
-// import java.io.PrintWriter; // (Xóa)
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
-import vn.ttapp.model.Role; // <-- THÊM IMPORT
+import jakarta.servlet.http.*;
+
+import java.io.IOException;
+import java.util.Locale;
+
 import vn.ttapp.model.User;
 import vn.ttapp.service.AuthService;
-import java.util.List; // <-- THÊM IMPORT
-import java.util.UUID; // <-- THÊM IMPORT
 
 /**
- *
- * @author New User
+ * Đăng nhập: - KHÔNG kiểm tra CSRF tại /auth/login (đã exclude ở CsrfFilter) -
+ * Rotate session id (anti fixation) - Đặt cờ isAdmin / isManager / isStaff -
+ * Điều hướng theo next (nếu an toàn) hoặc theo vai trò - Ưu tiên đặc biệt:
+ * email manager@gmail.com → /manager/trips?op=new
  */
 @WebServlet(name = "LoginServlet", urlPatterns = {"/auth/login"})
 public class LoginServlet extends HttpServlet {
 
     private final AuthService auth = new AuthService();
 
-    // (Hàm processRequest không cần thiết, đã xóa)
+    /**
+     * Chỉ chấp nhận path nội bộ context-relative để tránh open-redirect.
+     */
+    private static boolean isSafeInternalPath(String path) {
+        if (path == null || path.isBlank()) {
+            return false;
+        }
+        if (!path.startsWith("/")) {
+            return false;
+        }
+        if (path.startsWith("//")) {
+            return false;
+        }
+        if (path.contains("\\")) {
+            return false;
+        }
+        if (path.contains("://")) {
+            return false;
+        }
+        if (path.indexOf(':') >= 0) {
+            return false;
+        }
+        return true;
+    }
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
-         
-        HttpSession session = req.getSession();
-        String token = UUID.randomUUID().toString();
-        session.setAttribute("csrfToken", token);
-        
+        // KHÔNG cấp CSRF token thủ công nữa (đã exclude ở filter).
+        // Giữ nguyên ?next=... để login.jsp render hidden input nếu cần.
         req.getRequestDispatcher("/WEB-INF/views/auth/login.jsp").forward(req, res);
     }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
-        
+
+        req.setCharacterEncoding("UTF-8");
         HttpSession ss = req.getSession(true);
 
-        // (SỬA) Kiểm tra CSRF token
-        String sessionToken = (String) ss.getAttribute("csrfToken");
-        String formToken = req.getParameter("_csrf"); 
-
-        if (sessionToken == null || formToken == null || !sessionToken.equals(formToken)) {
-            req.setAttribute("error", "Phiên đăng nhập không hợp lệ. Vui lòng thử lại.");
-            doGet(req, res); // Tải lại form
-            return;
-        }
-        ss.removeAttribute("csrfToken"); // Xóa token sau khi dùng
-
+        // Lấy input
         String email = req.getParameter("email");
         String pass = req.getParameter("password");
-        
+
+        // Lấy đích điều hướng (ưu tiên session targetUrl, sau đó param next)
+        String targetUrl = (String) ss.getAttribute("targetUrl");
+        String nextParam = req.getParameter("next");
+        if (targetUrl == null || targetUrl.isBlank()) {
+            targetUrl = nextParam;
+        }
+
         try {
+            // Xác thực
             User u = auth.login(email, pass);
             if (u == null) {
-                req.setAttribute("error", "Email hoặc mật khẩu không chính xác");
-                doGet(req, res); // Gửi lỗi và tải lại form
+                req.setAttribute("error", "Email hoặc mật khẩu không chính xác, hoặc tài khoản đã bị khóa.");
+                req.getRequestDispatcher("/WEB-INF/views/auth/login.jsp").forward(req, res);
                 return;
             }
-            ss.setAttribute("AUTH_USER", u);
 
-            // Logic chuyển hướng dựa trên vai trò (ưu tiên ADMIN)
-            String primaryRoleCode = "CUSTOMER"; // Mặc định
-            if (u.getRoles() != null && !u.getRoles().isEmpty()) {
-                boolean isAdmin = u.getRoles().stream().anyMatch(r -> "ADMIN".equals(r.getCode()));
-                boolean isManager = u.getRoles().stream().anyMatch(r -> "MANAGER".equals(r.getCode()));
-                boolean isStaff = u.getRoles().stream().anyMatch(r -> r.getCode() != null && r.getCode().startsWith("STAFF_"));
+            // Rotate session id
+            try {
+                req.changeSessionId();
+            } catch (UnsupportedOperationException ignore) {
+                HttpSession old = ss;
+                old.invalidate();
+                ss = req.getSession(true);
+            }
 
-                if (isAdmin) {
-                    primaryRoleCode = "ADMIN";
-                } else if (isManager) {
-                    primaryRoleCode = "MANAGER";
-                } else if (isStaff) {
-                    primaryRoleCode = "STAFF_POS";
+            // Lưu thông tin đăng nhập vào session
+            ss.setAttribute("authUser", u);
+            ss.setAttribute("roles", u.getRoles());
+
+            boolean isAdmin = u.getRoles() != null && u.getRoles().stream()
+                    .anyMatch(r -> r != null && "ADMIN".equalsIgnoreCase(r.getCode()));
+            boolean isManager = u.getRoles() != null && u.getRoles().stream()
+                    .anyMatch(r -> r != null && "MANAGER".equalsIgnoreCase(r.getCode()));
+            boolean isStaff = u.getRoles() != null && u.getRoles().stream()
+                    .anyMatch(r -> r != null && r.getCode() != null
+                    && r.getCode().toUpperCase(Locale.ROOT).startsWith("STAFF_"));
+
+            ss.setAttribute("isAdmin", isAdmin);
+            ss.setAttribute("isManager", isManager);
+            ss.setAttribute("isStaff", isStaff);
+
+            // Điều hướng
+            ss.removeAttribute("targetUrl"); // tránh reuse
+            String ctx = req.getContextPath();
+
+            // ---- QUY TẮC ƯU TIÊN MỚI ----
+            // 1) Nếu là ADMIN/MANAGER: chỉ cho next khi trỏ vào /admin hoặc /manager
+            if (isAdmin || isManager) {
+                boolean nextOk = isSafeInternalPath(targetUrl)
+                        && (targetUrl.startsWith("/admin") || targetUrl.startsWith("/manager"));
+                if (nextOk) {
+                    res.sendRedirect(ctx + targetUrl);
+                    return;
                 }
+
+                // Ưu tiên đặc biệt theo email
+                if (u.getEmail() != null && u.getEmail().equalsIgnoreCase("manager@gmail.com")) {
+                    res.sendRedirect(ctx + "/manager/trips?op=new");
+                    return;
+                }
+
+                // Mặc định theo role quản trị
+                if (isAdmin) {
+                    res.sendRedirect(ctx + "/admin");
+                } else { // isManager
+                    res.sendRedirect(ctx + "/manager/trips?op=new");
+                }
+                return;
             }
 
-            String targetUrl = (String) ss.getAttribute("targetUrl");
+            // 2) Người dùng không có quyền quản trị:
+            //    Nếu có next nội bộ hợp lệ → cho đi
+            if (isSafeInternalPath(targetUrl)) {
+                res.sendRedirect(ctx + targetUrl);
+                return;
+            }
 
-            if (targetUrl != null && !targetUrl.isBlank()) {
-                // Ưu tiên 1: Về URL cũ (ví dụ: trang POS)
-                ss.removeAttribute("targetUrl");
-                res.sendRedirect(targetUrl);
-            } else if ("ADMIN".equals(primaryRoleCode)) {
-                res.sendRedirect(req.getContextPath() + "/admin");
-            } else if ("MANAGER".equals(primaryRoleCode)) {
-                res.sendRedirect(req.getContextPath() + "/manager"); // Trang Manager
-            } else if ("STAFF_POS".equals(primaryRoleCode)) {
-                res.sendRedirect(req.getContextPath() + "/staff/pos"); // Trang Staff
+            // 3) Mặc định cho staff / customer
+            if (isStaff) {
+                res.sendRedirect(ctx + "/staff/pos");
             } else {
-                res.sendRedirect(req.getContextPath() + "/home"); // Trang chủ (cho Customer)
+                res.sendRedirect(ctx + "/home");
             }
+
         } catch (Exception e) {
-            e.printStackTrace(); // (Nên log lỗi)
-            throw new ServletException(e);
+            e.printStackTrace();
+            req.setAttribute("error", "Có lỗi khi đăng nhập: " + e.getClass().getSimpleName());
+            req.getRequestDispatcher("/WEB-INF/views/auth/login.jsp").forward(req, res);
         }
     }
 
     @Override
     public String getServletInfo() {
-        return "Short description";
-    }// </editor-fold>
-
+        return "Login without CSRF check (excluded), session rotation, role flags, and safe redirects (admin/manager only honor next under /admin|/manager).";
+    }
 }
