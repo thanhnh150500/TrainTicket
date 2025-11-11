@@ -30,7 +30,8 @@ public class SeatHoldServlet extends HttpServlet {
         throws ServletException, IOException {
 
         HoldRequest body = mapper.readValue(req.getInputStream(), HoldRequest.class);
-
+        
+        // validate fl tripid and seatid
         if (body.tripId == null) {
             resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "tripId required");
             return;
@@ -39,9 +40,9 @@ public class SeatHoldServlet extends HttpServlet {
             resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "seatIds required");
             return;
         }
-
+        
         int ttl = (body.ttlMinutes != null ? Math.max(1, Math.min(60, body.ttlMinutes)) : 15);
-
+        
         try {
             List<HoldResult> results = new ArrayList<>(body.seatIds.size());
             for (Integer seatId : body.seatIds) {

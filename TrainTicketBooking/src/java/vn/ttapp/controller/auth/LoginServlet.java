@@ -11,7 +11,6 @@ import vn.ttapp.model.User;
 import vn.ttapp.service.AuthService;
 
 /**
- * Đăng nhập: - KHÔNG kiểm tra CSRF tại /auth/login (đã exclude ở CsrfFilter) -
  * Rotate session id (anti fixation) - Đặt cờ isAdmin / isManager / isStaff -
  * Điều hướng theo next (nếu an toàn) hoặc theo vai trò - Ưu tiên đặc biệt:
  * email manager@gmail.com → /manager/trips?op=new
@@ -49,8 +48,6 @@ public class LoginServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
-        // KHÔNG cấp CSRF token thủ công nữa (đã exclude ở filter).
-        // Giữ nguyên ?next=... để login.jsp render hidden input nếu cần.
         req.getRequestDispatcher("/WEB-INF/views/auth/login.jsp").forward(req, res);
     }
 
@@ -107,10 +104,9 @@ public class LoginServlet extends HttpServlet {
             ss.setAttribute("isStaff", isStaff);
 
             // Điều hướng
-            ss.removeAttribute("targetUrl"); // tránh reuse
+            ss.removeAttribute("targetUrl");
             String ctx = req.getContextPath();
 
-            // ---- QUY TẮC ƯU TIÊN MỚI ----
             // 1) Nếu là ADMIN/MANAGER: chỉ cho next khi trỏ vào /admin hoặc /manager
             if (isAdmin || isManager) {
                 boolean nextOk = isSafeInternalPath(targetUrl)
@@ -129,7 +125,7 @@ public class LoginServlet extends HttpServlet {
                 // Mặc định theo role quản trị
                 if (isAdmin) {
                     res.sendRedirect(ctx + "/admin");
-                } else { // isManager
+                } else {
                     res.sendRedirect(ctx + "/manager/trips?op=new");
                 }
                 return;

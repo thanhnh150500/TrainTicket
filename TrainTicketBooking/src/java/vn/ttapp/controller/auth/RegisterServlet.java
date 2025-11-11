@@ -9,7 +9,7 @@ import vn.ttapp.service.AuthService;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Objects;
+import java.util.*;
 import java.util.regex.Pattern;
 
 @WebServlet(name = "RegisterServlet", urlPatterns = {"/register", "/auth/register"})
@@ -17,25 +17,36 @@ public class RegisterServlet extends HttpServlet {
 
     private final AuthService auth = new AuthService();
 
-    /* =========================
-       Helpers
-       ========================= */
+    /*Helpers*/
     private static String trim(String s) {
         return s == null ? null : s.trim();
+    }
+
+    // Họ & Tên: chỉ chữ Unicode + khoảng trắng, dài 2–60, không cho số/ký tự đặc biệt
+    // Yêu cầu đã trim trước khi kiểm tra
+    private static final Pattern NAME_RE = Pattern.compile("^[\\p{L}][\\p{L}\\s]{0,58}[\\p{L}]$",
+            Pattern.UNICODE_CHARACTER_CLASS);
+
+    private static boolean isValidFullName(String fullName) {
+        if (fullName == null) {
+            return false;
+        }
+        String v = fullName.trim();
+        if (v.length() < 2 || v.length() > 60) {
+            return false;
+        }
+        return NAME_RE.matcher(v).matches();
     }
 
     private static boolean isValidEmail(String email) {
         if (email == null) {
             return false;
         }
-        // Regex gọn, bao phủ đa số email hợp lệ
         Pattern p = Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
         return p.matcher(email).matches();
     }
 
-    /**
-     * Chỉ cho phép next là đường dẫn nội bộ tương đối, tránh open redirect.
-     */
+    /**Chỉ cho phép 'next' là đường dẫn nội bộ tương đối, tránh open redirect.*/
     private static boolean isSafeInternalPath(String path) {
         if (path == null || path.isBlank()) {
             return false;
@@ -65,13 +76,22 @@ public class RegisterServlet extends HttpServlet {
         ss.setAttribute("csrfToken", java.util.UUID.randomUUID().toString());
     }
 
+    /**
+     * Gán lại các giá trị người dùng đã nhập để hiển thị lại trên form khi có
+     * lỗi.
+     */
+    private static void keepUserInput(HttpServletRequest req, String emailRaw, String fullName, String nextQ) {
+        req.setAttribute("email", emailRaw);
+        req.setAttribute("fullName", fullName);
+        req.setAttribute("next", nextQ);
+    }
+
     /* =========================
        GET: hiển thị form
        ========================= */
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
-        // Cấp CSRF token cho form đăng ký
         issueCsrf(req.getSession(true));
         req.getRequestDispatcher("/WEB-INF/views/auth/register.jsp").forward(req, res);
     }
@@ -86,62 +106,46 @@ public class RegisterServlet extends HttpServlet {
         req.setCharacterEncoding(StandardCharsets.UTF_8.name());
         HttpSession ss = req.getSession(true);
 
-        // 1) CSRF check (giống LoginServlet)
+        // 1) CSRF
         String sessionToken = (String) ss.getAttribute("csrfToken");
         String formToken = req.getParameter("_csrf");
         if (sessionToken == null || formToken == null || !Objects.equals(sessionToken, formToken)) {
-            req.setAttribute("error", "Phiên không hợp lệ. Vui lòng thử lại.");
-            // cấp lại token để người dùng submit lại form
+            Map<String, String> errors = new HashMap<>();
+            errors.put("global", "Phiên không hợp lệ. Vui lòng thử lại.");
+            req.setAttribute("errors", errors);
             issueCsrf(ss);
             req.getRequestDispatcher("/WEB-INF/views/auth/register.jsp").forward(req, res);
             return;
         }
-        // dùng xong xoá token
         ss.removeAttribute("csrfToken");
 
-        // 2) Lấy tham số & chuẩn hoá
+        // 2) Lấy & chuẩn hoá
         String emailRaw = trim(req.getParameter("email"));
         String password = trim(req.getParameter("password"));
         String confirm = trim(req.getParameter("confirmPassword"));
         String fullName = trim(req.getParameter("fullName"));
         String nextQ = trim(req.getParameter("next"));
-
-        // Chuẩn hoá email: trim + lowercase
         String email = (emailRaw == null) ? null : emailRaw.toLowerCase();
 
-        // 3) Validate cơ bản
+        // 3) Validate theo từng trường
+        Map<String, String> errors = new HashMap<>();
+
         if (!isValidEmail(email)) {
-            req.setAttribute("error", "Email không hợp lệ.");
-            req.setAttribute("email", emailRaw);
-            req.setAttribute("fullName", fullName);
-            req.setAttribute("next", nextQ);
-            issueCsrf(ss);
-            req.getRequestDispatcher("/WEB-INF/views/auth/register.jsp").forward(req, res);
-            return;
+            errors.put("email", "Email không hợp lệ.");
         }
         if (password == null || password.length() < 8) {
-            req.setAttribute("error", "Mật khẩu phải có ít nhất 8 ký tự.");
-            req.setAttribute("email", emailRaw);
-            req.setAttribute("fullName", fullName);
-            req.setAttribute("next", nextQ);
-            issueCsrf(ss);
-            req.getRequestDispatcher("/WEB-INF/views/auth/register.jsp").forward(req, res);
-            return;
+            errors.put("password", "Mật khẩu phải có ít nhất 8 ký tự.");
         }
-        if (fullName == null || fullName.isEmpty()) {
-            req.setAttribute("error", "Vui lòng nhập họ và tên.");
-            req.setAttribute("email", emailRaw);
-            req.setAttribute("fullName", fullName);
-            req.setAttribute("next", nextQ);
-            issueCsrf(ss);
-            req.getRequestDispatcher("/WEB-INF/views/auth/register.jsp").forward(req, res);
-            return;
+        if (confirm == null || !Objects.equals(password, confirm)) {
+            errors.put("confirmPassword", "Xác nhận mật khẩu không khớp.");
         }
-        if (confirm != null && !password.equals(confirm)) {
-            req.setAttribute("error", "Xác nhận mật khẩu không khớp.");
-            req.setAttribute("email", emailRaw);
-            req.setAttribute("fullName", fullName);
-            req.setAttribute("next", nextQ);
+        if (!isValidFullName(fullName)) {
+            errors.put("fullName", "Họ và tên chỉ gồm chữ và khoảng trắng (2–60 ký tự).");
+        }
+
+        if (!errors.isEmpty()) {
+            keepUserInput(req, emailRaw, fullName, nextQ);
+            req.setAttribute("errors", errors);
             issueCsrf(ss);
             req.getRequestDispatcher("/WEB-INF/views/auth/register.jsp").forward(req, res);
             return;
@@ -151,35 +155,32 @@ public class RegisterServlet extends HttpServlet {
         try {
             String id = auth.register(email, password, fullName);
             if (id == null) {
-                // email đã tồn tại
-                req.setAttribute("error", "Email đã tồn tại, vui lòng dùng email khác.");
-                req.setAttribute("email", emailRaw);
-                req.setAttribute("fullName", fullName);
-                req.setAttribute("next", nextQ);
+                // Email tồn tại
+                errors.put("email", "Email đã tồn tại, vui lòng dùng email khác.");
+                keepUserInput(req, emailRaw, fullName, nextQ);
+                req.setAttribute("errors", errors);
                 issueCsrf(ss);
                 req.getRequestDispatcher("/WEB-INF/views/auth/register.jsp").forward(req, res);
                 return;
             }
 
-            // 5) Thành công → quay về trang đăng nhập đúng đường dẫn /auth/login
+            // 5) Thành công → về /auth/login
             String ctx = req.getContextPath();
             StringBuilder redirect = new StringBuilder(ctx)
                     .append("/auth/login?registered=1&email=")
-                    .append(URLEncoder.encode(email, java.nio.charset.StandardCharsets.UTF_8));
+                    .append(URLEncoder.encode(email, StandardCharsets.UTF_8));
 
-            // Nếu có next và hợp lệ nội bộ, đính kèm để LoginServlet xử lý tiếp
             if (isSafeInternalPath(nextQ)) {
-                redirect.append("&next=").append(java.net.URLEncoder.encode(nextQ, java.nio.charset.StandardCharsets.UTF_8));
+                redirect.append("&next=")
+                        .append(URLEncoder.encode(nextQ, StandardCharsets.UTF_8));
             }
-
             res.sendRedirect(redirect.toString());
+
         } catch (Exception e) {
-            // Log và trả về lỗi tổng quát (tránh lộ chi tiết)
             e.printStackTrace();
-            req.setAttribute("error", "Có lỗi khi đăng ký tài khoản. Vui lòng thử lại sau.");
-            req.setAttribute("email", emailRaw);
-            req.setAttribute("fullName", fullName);
-            req.setAttribute("next", nextQ);
+            errors.put("global", "Có lỗi khi đăng ký tài khoản. Vui lòng thử lại sau.");
+            keepUserInput(req, emailRaw, fullName, nextQ);
+            req.setAttribute("errors", errors);
             issueCsrf(ss);
             req.getRequestDispatcher("/WEB-INF/views/auth/register.jsp").forward(req, res);
         }
@@ -187,6 +188,6 @@ public class RegisterServlet extends HttpServlet {
 
     @Override
     public String getServletInfo() {
-        return "User registration servlet with CSRF + email normalization + safe redirect.";
+        return "User registration servlet with per-field validation, CSRF, and safe redirect.";
     }
 }

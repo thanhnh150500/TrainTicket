@@ -1,6 +1,5 @@
 package vn.ttapp.controller.customer;
 
-import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 import java.io.IOException;
@@ -29,7 +28,8 @@ public class TripSearchServlet extends HttpServlet {
     private static String nz(String s) {
         return s == null ? "" : s.trim();
     }
-
+    
+     /** Parse ngày cho phép 2 format: yyyy-MM-dd (HTML date) và dd/MM/yyyy (người dùng quen thuộc) */
     private LocalDate parseDateLenient(String s) {
         if (s == null) {
             return null;
@@ -47,7 +47,8 @@ public class TripSearchServlet extends HttpServlet {
         }
         return null;
     }
-
+    
+    /** Parse giờ cho phép: HH:mm[:ss], H:mm, HH:mm */
     private LocalTime parseTimeLenient(String s) {
         if (s == null) {
             return null;
@@ -66,7 +67,8 @@ public class TripSearchServlet extends HttpServlet {
         }
         return null;
     }
-
+    
+    /** Parse Integer an toàn (null nếu không phải số) */
     private static Integer parseIntSafe(String s) {
         if (s == null) {
             return null;
@@ -77,7 +79,7 @@ public class TripSearchServlet extends HttpServlet {
             return null;
         }
     }
-
+    
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         resp.sendRedirect(req.getContextPath() + "/home");
@@ -85,6 +87,7 @@ public class TripSearchServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        
         final String typeRaw = nz(request.getParameter("tripType"));
         final String originNm = nz(request.getParameter("originStation"));
         final String destNm = nz(request.getParameter("destStation"));
@@ -114,10 +117,10 @@ public class TripSearchServlet extends HttpServlet {
         ss.setAttribute("lastReturn", returnRaw);
 
         try {
-            // --- resolve station IDs ---
+            // Ưu tiên id ẩn; nếu chưa có thì tìm theo tên ga 
             Integer originId = (originIdParam != null && originIdParam > 0) ? originIdParam : null;
             Integer destId = (destIdParam != null && destIdParam > 0) ? destIdParam : null;
-
+                    
             if (originId == null && !originNm.isBlank()) {
                 originId = stationDao.findIdByNameExact(originNm);
                 if (originId == null) {
@@ -130,6 +133,8 @@ public class TripSearchServlet extends HttpServlet {
                     destId = stationDao.findIdByNameLoose(destNm);
                 }
             }
+            
+            // validate ga
             if (originId == null || destId == null) {
                 backWithError(request, response, "Không tìm thấy ga đi/ga đến trong hệ thống.");
                 return;
@@ -139,13 +144,13 @@ public class TripSearchServlet extends HttpServlet {
                 return;
             }
 
-            // --- parse ngày/giờ ---
+            // --- validate ngày/giờ ---
             LocalDate departDate = parseDateLenient(departRaw);
             if (departDate == null) {
                 backWithError(request, response, "Ngày đi không hợp lệ. Dùng yyyy-MM-dd hoặc dd/MM/yyyy.");
                 return;
             }
-
+            
             LocalDate returnDate = null;
             if ("ROUNDTRIP".equals(tripType)) {
                 if (returnRaw.isBlank()) {
@@ -162,9 +167,9 @@ public class TripSearchServlet extends HttpServlet {
                     return;
                 }
             }
-
+            // giờ đi có thể không bắt buộc
             LocalTime departTime = timeRaw.isBlank() ? null : parseTimeLenient(timeRaw);
-
+            
             int pax = 1;
             try {
                 if (!paxRaw.isBlank()) {
@@ -176,7 +181,8 @@ public class TripSearchServlet extends HttpServlet {
             // --- tìm chuyến ---
             SearchResult sr = tripService.searchTripsByStationIds(
                     tripType, originId, destId, departDate, departTime, returnDate, null);
-
+            
+            // chọn chuyến gợi ý chuyến sớm nhấts
             Optional<Trip> chosenOutbound
                     = (sr.outbound == null || sr.outbound.isEmpty())
                     ? Optional.empty()
@@ -202,7 +208,8 @@ public class TripSearchServlet extends HttpServlet {
             ss.setAttribute("searchCtx", ctx);
             ss.setAttribute("chosenOutboundTripId", chosenOutbound.map(Trip::getTripId).orElse(null));
             ss.setAttribute("chosenInboundTripId", chosenInbound.map(Trip::getTripId).orElse(null));
-
+            
+            // Dữ liệu lấy cho triplistjsp
             LocalDate viewDate = departDate;
             List<TripCardVm> trips = tripListDao.queryTripsForDate(originId, destId, viewDate);
             List<DayTabVm> days = tripListDao.buildDayTabs(request, viewDate, originId, destId);
@@ -215,11 +222,12 @@ public class TripSearchServlet extends HttpServlet {
             request.setAttribute("days", days);
             request.setAttribute("trips", trips);
 
-            // cờ để JSP hiển thị thông báo rỗng đẹp mắt thay vì bị redirect
+            // cờ để JSP hiển thị thông báo rỗng
             request.setAttribute("emptyOutbound", (sr.outbound == null || sr.outbound.isEmpty()));
             request.setAttribute("emptyInbound", "ROUNDTRIP".equals(tripType)
                     && (sr.inbound == null || sr.inbound.isEmpty()));
-
+            
+            
             request.setAttribute("prevDateUrl",
                     request.getContextPath() + "/trips?originId=" + originId
                     + "&destId=" + destId + "&date=" + viewDate.minusDays(1));
@@ -241,7 +249,7 @@ public class TripSearchServlet extends HttpServlet {
         }
     }
 
-    /* redirect về /home với thông báo lỗi (void) */
+    /* redirect về /home với thông báo lỗi */
     private void backWithError(HttpServletRequest req, HttpServletResponse resp, String msg)
             throws IOException {
         req.getSession(true).setAttribute("error", msg);

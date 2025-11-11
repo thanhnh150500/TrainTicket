@@ -16,7 +16,7 @@
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
         <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
-        <!-- Custom CSS (dùng chung với login) -->
+        <!-- Custom CSS -->
         <link rel="stylesheet" href="${ctx}/assets/css/auth.css">
     </head>
     <body class="bg-light">
@@ -25,6 +25,14 @@
             <h2 class="text-center fw-bold mb-2">Tạo tài khoản</h2>
             <p class="text-center text-muted mb-4">Nhập thông tin để đăng ký</p>
 
+            <!-- Lỗi chung (CSRF/Exception...) -->
+            <c:if test="${not empty errors.global}">
+                <div class="alert alert-danger text-center fw-semibold py-2 mb-3">
+                    <i class="bi bi-x-circle me-1"></i>
+                    <c:out value="${errors.global}"/>
+                </div>
+            </c:if>
+            <!-- Lỗi chuỗi cũ (nếu servlet đặt 'error') -->
             <c:if test="${not empty error}">
                 <div class="alert alert-danger text-center fw-semibold py-2 mb-3">
                     <i class="bi bi-x-circle me-1"></i>
@@ -32,10 +40,10 @@
                 </div>
             </c:if>
 
-            <form method="post" action="${ctx}/auth/register" id="regForm" novalidate autocomplete="on">
+            <form id="regForm" method="post" action="${ctx}/auth/register" novalidate autocomplete="on">
                 <input type="hidden" name="_csrf" value="${sessionScope.csrfToken}"/>
 
-                <!-- Giữ lại next nếu có (ưu tiên request attr, sau đó param) -->
+                <!-- Giữ lại next nếu có -->
                 <c:choose>
                     <c:when test="${not empty next}">
                         <input type="hidden" name="next" value="${fn:escapeXml(next)}"/>
@@ -45,32 +53,41 @@
                     </c:when>
                 </c:choose>
 
+                <!-- Họ và tên -->
                 <div class="mb-3">
                     <label class="form-label" for="fullName">Họ và tên</label>
                     <input
                         id="fullName"
                         name="fullName"
-                        class="form-control"
+                        class="form-control ${not empty errors.fullName ? 'is-invalid' : ''}"
                         placeholder="Nguyễn Văn A"
-                        value="${fn:escapeXml(fullName)}"
+                        value="${fn:escapeXml(not empty fullName ? fullName : param.fullName)}"
                         required
                         autofocus
                         autocomplete="name" />
+                    <div id="fullNameFeedback" class="invalid-feedback">
+                        <c:out value="${empty errors.fullName ? 'Họ và tên chỉ gồm chữ và khoảng trắng (2–60 ký tự).' : errors.fullName}"/>
+                    </div>
                 </div>
 
+                <!-- Email -->
                 <div class="mb-3">
                     <label class="form-label" for="email">Email</label>
                     <input
                         id="email"
                         type="email"
                         name="email"
-                        class="form-control"
+                        class="form-control ${not empty errors.email ? 'is-invalid' : ''}"
                         placeholder="you@example.com"
-                        value="${fn:escapeXml(email)}"
+                        value="${fn:escapeXml(not empty email ? email : param.email)}"
                         required
                         autocomplete="username" />
+                    <div id="emailFeedback" class="invalid-feedback">
+                        <c:out value="${empty errors.email ? 'Email không hợp lệ.' : errors.email}"/>
+                    </div>
                 </div>
 
+                <!-- Mật khẩu -->
                 <div class="mb-3">
                     <label class="form-label" for="regPassword">Mật khẩu</label>
                     <div class="input-group">
@@ -78,7 +95,7 @@
                             type="password"
                             name="password"
                             id="regPassword"
-                            class="form-control"
+                            class="form-control ${not empty errors.password ? 'is-invalid' : ''}"
                             placeholder="••••••••"
                             minlength="8"
                             required
@@ -88,17 +105,20 @@
                         </button>
                     </div>
                     <div class="form-text">Mật khẩu tối thiểu 8 ký tự.</div>
+                    <div id="passwordFeedback" class="invalid-feedback">
+                        <c:out value="${errors.password}"/>
+                    </div>
                 </div>
 
+                <!-- Xác nhận mật khẩu -->
                 <div class="mb-3">
                     <label class="form-label" for="confirmPassword">Xác nhận mật khẩu</label>
                     <div class="input-group">
-                        <!-- name=confirmPassword để servlet đọc -->
                         <input
                             type="password"
                             id="confirmPassword"
                             name="confirmPassword"
-                            class="form-control"
+                            class="form-control ${not empty errors.confirmPassword ? 'is-invalid' : ''}"
                             placeholder="••••••••"
                             minlength="8"
                             required
@@ -107,8 +127,8 @@
                             <i class="bi bi-eye" aria-hidden="true"></i>
                         </button>
                     </div>
-                    <div id="confirmHelp" class="form-text text-danger d-none" aria-live="polite">
-                        Xác nhận mật khẩu chưa khớp.
+                    <div id="confirmHelp" class="invalid-feedback">
+                        <c:out value="${empty errors.confirmPassword ? '' : errors.confirmPassword}"/>
                     </div>
                 </div>
 
@@ -123,74 +143,9 @@
             </form>
         </div>
 
+        <!-- JS -->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                const pw = document.getElementById('regPassword');
-                const cf = document.getElementById('confirmPassword');
-                const tPw = document.getElementById('toggleRegPassword');
-                const tCf = document.getElementById('toggleRegConfirm');
-                const msg = document.getElementById('confirmHelp');
-                const form = document.getElementById('regForm');
-                let cfDirty = false;
-
-                function bindToggle(btn, input) {
-                    if (!btn || !input)
-                        return;
-                    btn.addEventListener('click', function () {
-                        input.type = (input.type === 'password') ? 'text' : 'password';
-                        const icon = btn.querySelector('i');
-                        if (icon) {
-                            icon.classList.toggle('bi-eye');
-                            icon.classList.toggle('bi-eye-slash');
-                        }
-                        input.focus();
-                    });
-                }
-
-                function validateConfirm() {
-                    if (!pw || !cf || !msg)
-                        return;
-                    if (!cfDirty || !pw.value || !cf.value) {
-                        msg.classList.add('d-none');
-                        cf.classList.remove('is-invalid');
-                        cf.setCustomValidity('');
-                        return;
-                    }
-                    if (pw.value !== cf.value) {
-                        msg.classList.remove('d-none');
-                        cf.classList.add('is-invalid');
-                        cf.setCustomValidity('Passwords do not match');
-                    } else {
-                        msg.classList.add('d-none');
-                        cf.classList.remove('is-invalid');
-                        cf.setCustomValidity('');
-                    }
-                }
-
-                if (cf)
-                    cf.addEventListener('input', () => {
-                        cfDirty = true;
-                        validateConfirm();
-                    });
-                if (pw)
-                    pw.addEventListener('input', validateConfirm);
-                if (form) {
-                    form.addEventListener('submit', (e) => {
-                        cfDirty = true;
-                        validateConfirm();
-                        if (!form.checkValidity()) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                        }
-                    });
-                }
-
-                bindToggle(tPw, pw);
-                bindToggle(tCf, cf);
-            });
-        </script>
-
+        <!-- JS validate tách riêng -->
+        <script src="${ctx}/assets/js/register.js?v=1"></script>
     </body>
 </html>

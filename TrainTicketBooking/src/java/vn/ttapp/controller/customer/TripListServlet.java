@@ -61,14 +61,13 @@ public class TripListServlet extends HttpServlet {
             Locale vi = new Locale("vi");
             DateTimeFormatter DMY = DateTimeFormatter.ofPattern("dd-MM-yyyy");
             String activeDateLabel = date.format(DMY) + ", "
-                    + date.getDayOfWeek().getDisplayName(TextStyle.FULL, vi);
-
+                    + date.getDayOfWeek().getDisplayName(TextStyle.FULL, vi); 
+            
+            // JSP
             req.setAttribute("routeTitle", originName + " → " + destName);
             req.setAttribute("routeOriginCode", originName);
             req.setAttribute("routeDestCode", destName);
             req.setAttribute("activeDateLabel", activeDateLabel);
-
-            // JSP cần
             req.setAttribute("searchDate", date);
             req.setAttribute("days", days);
             req.setAttribute("trips", trips);
@@ -88,18 +87,18 @@ public class TripListServlet extends HttpServlet {
     }
 
     /**
-     * Lấy tên ga theo ID; nếu chưa có hàm trong StationDao, bạn có thể dùng
-     * findById và lấy getName().
+     * Lấy tên ga theo ID;
+     * findById và getName().
      */
     private String safeStationName(int stationId) {
         try {
-            // Nếu bạn đã có hàm findNameById(int) thì dùng dòng dưới:
+            //findNameById(int)
             String name = stationDao.findNameById(stationId);
             if (name != null && !name.isBlank()) {
                 return name;
             }
 
-            // Fallback nếu thiếu hàm trên:
+            // Fallback
             var st = stationDao.findById(stationId);
             return (st != null && st.getName() != null) ? st.getName() : ("#" + stationId);
         } catch (Exception ignore) {
